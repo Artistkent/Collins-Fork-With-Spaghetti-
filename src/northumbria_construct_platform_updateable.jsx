@@ -1,5 +1,27 @@
 import { useState, useEffect } from "react";
 
+const DEFAULT_TASKS=[
+  {id:1, desc:"Confirm event date & format",       owner:"callum",    start:"2026-04-06",end:"2026-04-06",status:"Complete",   pri:"Critical",deps:"",    notes:"Event fixed for 28 April",                                        pct:100},
+  {id:2, desc:"Finalise debate motion",            owner:"kufre",     start:"2026-04-06",end:"2026-04-06",status:"Complete",   pri:"High",    deps:"1",   notes:"Single motion only",                                              pct:100},
+  {id:3, desc:"Submit Event and Location booking", owner:"tolulope",  start:"2026-04-06",end:"2026-04-07",status:"Complete",   pri:"High",    deps:"1",   notes:"NSU approval confirmed",                                          pct:100},
+  {id:4, desc:"Confirm Debate Chair",              owner:"callum",    start:"2026-04-07",end:"2026-04-08",status:"Not Started",pri:"High",    deps:"3",   notes:"Kelechi Ayanso, Barry Gledson, Michelle Littlemore, Pablo Martinez",pct:0},
+  {id:5, desc:"Invitation for speakers",           owner:"tolulope",  start:"2026-04-08",end:"2026-04-09",status:"In Progress",pri:"High",    deps:"2,4", notes:"Prop & Opp — invitations sent",                                   pct:0},
+  {id:6, desc:"Confirm speakers + reserves",       owner:"kufre",     start:"2026-04-09",end:"2026-04-11",status:"Not Started",pri:"High",    deps:"5",   notes:"Kufre, Lucas, Ikechukwu, Vemula, Judith, Adiyita, Maria",         pct:0},
+  {id:7, desc:"Issue speaker briefing pack",       owner:"kufre",     start:"2026-04-11",end:"2026-04-11",status:"Not Started",pri:"Medium",  deps:"6",   notes:"Oxford rules",                                                    pct:0},
+  {id:8, desc:"Launch promotion",                  owner:"tolulope",  start:"2026-04-12",end:"2026-04-23",status:"Not Started",pri:"High",    deps:"2,3", notes:"LinkedIn + reps",                                                 pct:0},
+  {id:9, desc:"Open registration form",            owner:"tolulope",  start:"2026-04-12",end:"2026-04-27",status:"Not Started",pri:"Medium",  deps:"8",   notes:"MS Forms",                                                        pct:0},
+  {id:10,desc:"Engage academic reps & societies",  owner:"tolulope",  start:"2026-04-14",end:"2026-04-17",status:"Not Started",pri:"Medium",  deps:"8",   notes:"Dept amplification",                                              pct:0},
+  {id:11,desc:"Prepare debate run-of-show",        owner:"callum",    start:"2026-04-14",end:"2026-04-15",status:"Not Started",pri:"Medium",  deps:"4,6", notes:"Chair script",                                                    pct:0},
+  {id:12,desc:"Prepare voting forms (QR)",         owner:"kufre",     start:"2026-04-16",end:"2026-04-18",status:"Not Started",pri:"Medium",  deps:"2",   notes:"Pre & post vote",                                                 pct:0},
+  {id:13,desc:"Confirm AV & room setup",           owner:"uchechukwu",start:"2026-04-18",end:"2026-04-21",status:"Not Started",pri:"High",    deps:"3",   notes:"3 microphones, projector",                                        pct:0},
+  {id:14,desc:"Promotion reminder push",           owner:"tolulope",  start:"2026-04-21",end:"2026-04-22",status:"Not Started",pri:"Medium",  deps:"8,9", notes:"Attendance boost",                                                pct:0},
+  {id:15,desc:"Speaker reconfirmation",            owner:"kufre",     start:"2026-04-23",end:"2026-04-24",status:"Not Started",pri:"High",    deps:"6",   notes:"No-shows risk",                                                   pct:0},
+  {id:16,desc:"Final logistics walkthrough",       owner:"uchechukwu",start:"2026-04-27",end:"2026-04-27",status:"Not Started",pri:"High",    deps:"13",  notes:"Go / No-go check",                                                pct:0},
+  {id:17,desc:"DELIVER EVENT",                     owner:"callum",    start:"2026-04-28",end:"2026-04-28",status:"Not Started",pri:"Critical",deps:"16",  notes:"Event day — Reds Hall",                                           pct:0},
+  {id:18,desc:"Publish LinkedIn article",          owner:"kufre",     start:"2026-04-29",end:"2026-05-01",status:"Not Started",pri:"Medium",  deps:"17",  notes:"Post-event output",                                               pct:0},
+  {id:19,desc:"Capture feedback & lessons learned",owner:"tolulope",  start:"2026-04-29",end:"2026-05-03",status:"Not Started",pri:"Medium",  deps:"17",  notes:"Repeatability",                                                   pct:0},
+]; 
+
 // ── Brand ─────────────────────────────────────────────────────────────────────
 const B = {
   dk:"#1A3C2E",md:"#2D6A4F",ac:"#40916C",lt:"#74C69D",
@@ -33,27 +55,7 @@ const TEAM=[
 ];
 
 // ── Tasks (V1.1 — tasks 2,3 Complete; task 5 In Progress; task 11 restored) ──
-const DEFAULT_TASKS=[
-  {id:1, desc:"Confirm event date & format",       owner:"callum",    start:"2026-04-06",end:"2026-04-06",status:"Complete",   pri:"Critical",deps:"",    notes:"Event fixed for 28 April",                                        pct:100},
-  {id:2, desc:"Finalise debate motion",            owner:"kufre",     start:"2026-04-06",end:"2026-04-06",status:"Complete",   pri:"High",    deps:"1",   notes:"Single motion only",                                              pct:100},
-  {id:3, desc:"Submit Event and Location booking", owner:"tolulope",  start:"2026-04-06",end:"2026-04-07",status:"Complete",   pri:"High",    deps:"1",   notes:"NSU approval confirmed",                                          pct:100},
-  {id:4, desc:"Confirm Debate Chair",              owner:"callum",    start:"2026-04-07",end:"2026-04-08",status:"Not Started",pri:"High",    deps:"3",   notes:"Kelechi Ayanso, Barry Gledson, Michelle Littlemore, Pablo Martinez",pct:0},
-  {id:5, desc:"Invitation for speakers",           owner:"tolulope",  start:"2026-04-08",end:"2026-04-09",status:"In Progress",pri:"High",    deps:"2,4", notes:"Prop & Opp — invitations sent",                                   pct:0},
-  {id:6, desc:"Confirm speakers + reserves",       owner:"kufre",     start:"2026-04-09",end:"2026-04-11",status:"Not Started",pri:"High",    deps:"5",   notes:"Kufre, Lucas, Ikechukwu, Vemula, Judith, Adiyita, Maria",         pct:0},
-  {id:7, desc:"Issue speaker briefing pack",       owner:"kufre",     start:"2026-04-11",end:"2026-04-11",status:"Not Started",pri:"Medium",  deps:"6",   notes:"Oxford rules",                                                    pct:0},
-  {id:8, desc:"Launch promotion",                  owner:"tolulope",  start:"2026-04-12",end:"2026-04-23",status:"Not Started",pri:"High",    deps:"2,3", notes:"LinkedIn + reps",                                                 pct:0},
-  {id:9, desc:"Open registration form",            owner:"tolulope",  start:"2026-04-12",end:"2026-04-27",status:"Not Started",pri:"Medium",  deps:"8",   notes:"MS Forms",                                                        pct:0},
-  {id:10,desc:"Engage academic reps & societies",  owner:"tolulope",  start:"2026-04-14",end:"2026-04-17",status:"Not Started",pri:"Medium",  deps:"8",   notes:"Dept amplification",                                              pct:0},
-  {id:11,desc:"Prepare debate run-of-show",        owner:"callum",    start:"2026-04-14",end:"2026-04-15",status:"Not Started",pri:"Medium",  deps:"4,6", notes:"Chair script",                                                    pct:0},
-  {id:12,desc:"Prepare voting forms (QR)",         owner:"kufre",     start:"2026-04-16",end:"2026-04-18",status:"Not Started",pri:"Medium",  deps:"2",   notes:"Pre & post vote",                                                 pct:0},
-  {id:13,desc:"Confirm AV & room setup",           owner:"uchechukwu",start:"2026-04-18",end:"2026-04-21",status:"Not Started",pri:"High",    deps:"3",   notes:"3 microphones, projector",                                        pct:0},
-  {id:14,desc:"Promotion reminder push",           owner:"tolulope",  start:"2026-04-21",end:"2026-04-22",status:"Not Started",pri:"Medium",  deps:"8,9", notes:"Attendance boost",                                                pct:0},
-  {id:15,desc:"Speaker reconfirmation",            owner:"kufre",     start:"2026-04-23",end:"2026-04-24",status:"Not Started",pri:"High",    deps:"6",   notes:"No-shows risk",                                                   pct:0},
-  {id:16,desc:"Final logistics walkthrough",       owner:"uchechukwu",start:"2026-04-27",end:"2026-04-27",status:"Not Started",pri:"High",    deps:"13",  notes:"Go / No-go check",                                                pct:0},
-  {id:17,desc:"DELIVER EVENT",                     owner:"callum",    start:"2026-04-28",end:"2026-04-28",status:"Not Started",pri:"Critical",deps:"16",  notes:"Event day — Reds Hall",                                           pct:0},
-  {id:18,desc:"Publish LinkedIn article",          owner:"kufre",     start:"2026-04-29",end:"2026-05-01",status:"Not Started",pri:"Medium",  deps:"17",  notes:"Post-event output",                                               pct:0},
-  {id:19,desc:"Capture feedback & lessons learned",owner:"tolulope",  start:"2026-04-29",end:"2026-05-03",status:"Not Started",pri:"Medium",  deps:"17",  notes:"Repeatability",                                                   pct:0},
-];
+
 
 const DEFAULT_RACI={
   1:{callum:"A",sandhya:"C",kufre:"I",tolulope:"R",uchechukwu:"I"},
@@ -120,9 +122,16 @@ function Toast({msg}){if(!msg)return null;return<div style={{position:"fixed",bo
 // ── Task modal ────────────────────────────────────────────────────────────────
 function TaskModal({task,onSave,onDelete,onClose}){
   const isNew=!task.id;
-  const[f,setF]=useState({desc:task.desc||"",start:task.start||"2026-04-06",end:task.end||"2026-04-07",status:task.status||"Not Started",pri:task.pri||"High",owner:task.owner||TEAM[0].id,pct:task.pct??0,deps:task.deps||"",notes:task.notes||""});
+  const[f,setF] = useState({desc:task.desc||"",start:task.start||"2026-04-06",end:task.end||"2026-04-07",status:task.status||"Not Started",pri:task.pri||"High",owner:task.owner||TEAM[0].id,pct:task.pct??0,deps:task.deps||"",notes:task.notes||""});
   const upd=(k,v)=>setF(x=>({...x,[k]:v}));
-  function submit(){if(!f.desc.trim()){alert("Please enter a task description.");return;}let pct=Math.min(100,Math.max(0,parseInt(f.pct)||0));if(f.status==="Complete")pct=100;onSave({...task,...f,pct,updatedAt:Date.now()});}
+
+  function submit(){
+    if(!f.desc.trim()){
+      alert("Please enter a task description.");
+      return;
+    }
+  
+  let pct=Math.min(100,Math.max(0,parseInt(f.pct)||0));if(f.status==="Complete")pct=100;onSave({...task,...f,pct,updatedAt:Date.now()});}
   useEffect(()=>{const h=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",h);document.body.style.overflow="hidden";return()=>{window.removeEventListener("keydown",h);document.body.style.overflow="";};},[onClose]);
   const lbl={display:"block",fontSize:11,fontWeight:700,color:B.tg,marginBottom:5,textTransform:"uppercase",letterSpacing:.5};
   const inp={width:"100%",padding:"10px 12px",border:`1.5px solid ${B.pl}`,borderRadius:10,color:B.tx,background:B.st,fontSize:14,WebkitAppearance:"none",boxSizing:"border-box"};
@@ -156,7 +165,8 @@ function TaskModal({task,onSave,onDelete,onClose}){
 // ════════════════════════════════════════════════════════════
 // HOME
 // ════════════════════════════════════════════════════════════
-function Home({isMobile,onNav}){
+// ── Home sub-page: Project Brief ─────────────────────────────────────────────
+function HomeBrief({isMobile,onNav}){
   const motions=[
     {n:1,m:"This House Believes That Professional Body Membership Is No Longer Essential for Career Progression in Construction.",f:"CIOB, ICE, APM relevance; employability; chartership"},
     {n:2,m:"This House Believes That Sustainability Targets Are Undermining Project Delivery Efficiency.",f:"ESG requirements, carbon targets, cost and programme pressures"},
@@ -179,11 +189,11 @@ function Home({isMobile,onNav}){
     <div style={{background:B.dk,borderRadius:16,padding:isMobile?"20px 18px":"28px 32px",marginBottom:16,position:"relative",overflow:"hidden"}}>
       <div style={{position:"absolute",top:-120,right:-120,width:380,height:380,borderRadius:"50%",border:"2px solid rgba(116,198,157,.12)"}}/>
       <div style={{position:"relative"}}>
-        <div style={{fontSize:11,fontWeight:700,color:B.lt,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Northumbria Construct</div>
+        <div style={{fontSize:11,fontWeight:700,color:B.lt,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Northumbria Construct · APM Challenge</div>
         <h1 style={{fontSize:isMobile?22:28,fontWeight:800,color:"#fff",margin:"0 0 8px",lineHeight:1.2}}>Oxford-Style Debate Event</h1>
         <div style={{fontSize:14,color:B.lt,marginBottom:16}}>NSU Building – Reds Hall · 28 April 2026 · ~30 Students</div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          {[["📅","28 April"],["🕒","2:30pm – 4:30pm"],["📍","Reds Hall"],["🎓","~30 Attendees"]].map(([ic,lbl])=>
+          {[["📅","28 April"],["🕒","3pm–5pm"],["📍","Reds Hall"],["🎓","~30 Attendees"],["✅","Free Entry"]].map(([ic,lbl])=>
             <div key={lbl} style={{display:"flex",alignItems:"center",gap:5,background:"rgba(255,255,255,.1)",borderRadius:99,padding:"5px 12px"}}>
               <span style={{fontSize:13}}>{ic}</span><span style={{fontSize:12,color:"#fff",fontWeight:600}}>{lbl}</span>
             </div>
@@ -192,28 +202,36 @@ function Home({isMobile,onNav}){
       </div>
     </div>
     <Card style={{marginBottom:14}}>
-      <div style={{fontWeight:700,fontSize:15,color:B.dk,marginBottom:12}}>🎯 Purpose & Objectives</div>
-      <div style={{fontSize:13,color:B.tm,lineHeight:1.7,marginBottom:12}}>The Oxford-style debate is a high-impact, student-led intellectual event designed to build professional skills, encourage critical thinking, and expose students to real issues in the built environment.</div>
-      {["Build confidence in public speaking, structured argumentation, and professional discourse","Encourage critical thinking and mental stimulation, particularly during the examination period","Expose students to contemporary issues affecting the built environment, project delivery, and professional practice","Deliver a high-engagement, low-cost academic event aligned with Northumbria Construct's mission of bridging academia and industry","Increase awareness, participation, and visibility of Northumbria Construct within the student body"].map((g,i)=>
-        <div key={i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"7px 0",borderBottom:i<4?`1px solid ${B.st}`:"none"}}>
-          <div style={{width:22,height:22,borderRadius:"50%",background:B.pl,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
-            <span style={{fontSize:11,fontWeight:700,color:B.ac}}>{i+1}</span>
+      <div style={{fontWeight:700,fontSize:15,color:B.dk,marginBottom:10}}>📄 Project Brief</div>
+      <div style={{fontSize:13,color:B.tm,lineHeight:1.75,marginBottom:10}}>Northumbria Construct is organising a formal <b style={{color:B.dk}}>Oxford-Style Debate</b> as a high-value academic and professional development event for students of the Built Environment Faculty at Northumbria University, on <b style={{color:B.dk}}>Monday 28 April 2026, 3:00pm–5:00pm</b>, Reds Hall.</div>
+    </Card>
+    <Card style={{marginBottom:14}}>
+      <div style={{fontWeight:700,fontSize:15,color:B.dk,marginBottom:10}}>🎯 Aims & Objectives</div>
+      {[
+        ["Build professional skills","Develop confidence in public speaking, structured argumentation and professional discourse."],
+        ["Stimulate critical thinking","Encourage intellectual engagement particularly during the examination period."],
+        ["Industry relevance","Expose students to contemporary issues affecting the built environment and professional practice."],
+        ["Society mission","Deliver a high-engagement, low-cost event aligned with Northumbria Construct's mission."],
+        ["Visibility & growth","Increase awareness and participation of Northumbria Construct within the student body."],
+      ].map(([t,d],i)=>
+        <div key={t} style={{display:"flex",gap:12,padding:"10px 0",borderBottom:i<4?`1px solid ${B.st}`:"none",alignItems:"flex-start"}}>
+          <div style={{width:24,height:24,borderRadius:"50%",background:B.dk,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <span style={{fontSize:11,fontWeight:800,color:B.lt}}>{i+1}</span>
           </div>
-          <span style={{fontSize:12,color:B.tx,lineHeight:1.5}}>{g}</span>
+          <div><div style={{fontSize:13,fontWeight:700,color:B.dk,marginBottom:2}}>{t}</div><div style={{fontSize:12,color:B.tm,lineHeight:1.5}}>{d}</div></div>
         </div>
       )}
     </Card>
     <Card style={{marginBottom:14}}>
-      <div style={{fontWeight:700,fontSize:15,color:B.dk,marginBottom:4}}>🎙 Debate Motions (Select One)</div>
-      <div style={{fontSize:12,color:B.tg,marginBottom:14}}>5 motions available. Each is framed as a formal Oxford-style proposition.</div>
+      <div style={{fontWeight:700,fontSize:15,color:B.dk,marginBottom:4}}>🎙 Debate Motions</div>
+      <div style={{fontSize:12,color:B.tg,marginBottom:12}}>5 motions available — one to be selected by the committee.</div>
       {motions.map(({n,m,f})=><div key={n} style={{display:"flex",gap:12,padding:"11px 0",borderBottom:n<5?`1px solid ${B.st}`:"none",alignItems:"flex-start"}}>
         <div style={{width:28,height:28,borderRadius:"50%",background:B.dk,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12,color:"#fff",flexShrink:0}}>{n}</div>
         <div><div style={{fontSize:13,fontWeight:600,color:B.dk,marginBottom:3,lineHeight:1.4}}>"{m}"</div><div style={{fontSize:11,color:B.tg}}>{f}</div></div>
       </div>)}
     </Card>
     <Card style={{marginBottom:14}}>
-      <div style={{fontWeight:700,fontSize:15,color:B.dk,marginBottom:4}}>⏱ Event Format</div>
-      <div style={{fontSize:12,color:B.tg,marginBottom:14}}>Total Duration: 75–90 minutes</div>
+      <div style={{fontWeight:700,fontSize:15,color:B.dk,marginBottom:4}}>⏱ Event Format — 75–90 Minutes</div>
       {fmt.map(({seg,dur,detail},i)=><div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 0",borderBottom:i<fmt.length-1?`1px solid ${B.st}`:"none"}}>
         <div style={{flexShrink:0,width:56,textAlign:"center",background:B.dk,borderRadius:8,padding:"4px 6px"}}><span style={{fontSize:10,fontWeight:700,color:B.lt}}>{dur}</span></div>
         <div><div style={{fontSize:12,fontWeight:600,color:B.tx}}>{seg}</div><div style={{fontSize:11,color:B.tg,marginTop:1}}>{detail}</div></div>
@@ -225,6 +243,273 @@ function Home({isMobile,onNav}){
     </div>
   </div>;
 }
+
+// ── Home sub-page: Stakeholders ───────────────────────────────────────────────
+function HomeStakeholders({isMobile}){
+  const[selected,setSelected]=useState(null);
+  const W={power:0.30,interest:0.25,influence:0.30,ease:0.15};
+  function wScore(s){return Math.round(((s.power*W.power)+(s.interest*W.interest)+(s.influence*W.influence)+(s.ease*W.ease))*100)/100;}
+  function catColor(c){return c==="Key Player"?B.dk:c==="Keep Satisfied"?B.md:c==="Keep Informed"?B.ac:"#888";}
+  function autoCategory(p,i){
+    if(p>=4&&i>=4)return"Key Player";
+    if(p>=4)return"Keep Satisfied";
+    if(i>=4)return"Keep Informed";
+    return"Monitor";
+  }
+  function wBandStyle(sc){return sc>=4?{bg:"#1A3C2E",fg:B.lt}:sc>=3?{bg:B.ac,fg:"#fff"}:sc>=2?{bg:B.pl,fg:B.md}:{bg:"#f0f0f0",fg:"#555"};}
+
+  const raw=[
+    {id:1,name:"NSU / Student Union",      type:"Internal",  power:5,interest:5,influence:4,ease:4,icon:"🏛",strategy:"Keep fully informed at every stage. NSU approved venue — critical relationship. Regular updates on attendance and logistics.",engagement:"Direct",frequency:"Weekly",owner:"Callum O'Connor"},
+    {id:2,name:"Built Environment Students",type:"Beneficiary",power:2,interest:5,influence:3,ease:5,icon:"🎓",strategy:"Primary audience. Reach via WhatsApp, course reps and LinkedIn. Over-invite to 60–70 for 25+ attendance.",engagement:"Broadcast",frequency:"Bi-weekly",owner:"Tolulope Idowu"},
+    {id:3,name:"Academic Staff / Lecturers",type:"External", power:3,interest:4,influence:4,ease:3,icon:"📚",strategy:"Leverage for promotion. Request forwarding of event emails. Invite as observers — increases prestige.",engagement:"Periodic",frequency:"Monthly",owner:"Tolulope Idowu"},
+    {id:4,name:"Debate Chair (External)",   type:"External", power:4,interest:4,influence:4,ease:3,icon:"⚖️",strategy:"Critical to event quality. Shortlist: Kelechi Ayanso, Barry Gledson, Michelle Littlemore, Pablo Martinez.",engagement:"Direct",frequency:"Weekly post-confirm",owner:"Callum O'Connor"},
+    {id:5,name:"Student Speakers",          type:"Internal", power:2,interest:5,influence:3,ease:4,icon:"🎙",strategy:"Kufre leads. Pool: Kufre, Lucas, Ikechukwu, Vemula, Judith, Adiyita, Maria. Brief by 11 Apr.",engagement:"Direct",frequency:"Bi-weekly",owner:"Kufre Antia"},
+    {id:6,name:"Northumbria Univ Faculty",  type:"External", power:4,interest:3,influence:4,ease:3,icon:"🏫",strategy:"Keep satisfied with concise updates. Event must reflect positively on Faculty.",engagement:"Minimal",frequency:"Monthly",owner:"Callum O'Connor"},
+    {id:7,name:"Professional Bodies",       type:"External", power:2,interest:3,influence:5,ease:2,icon:"🏆",strategy:"Post-event LinkedIn content. High influence amplifiers for long-term network.",engagement:"Post-event",frequency:"Post-event",owner:"Kufre Antia"},
+    {id:8,name:"Society Alumni / LinkedIn", type:"External", power:1,interest:3,influence:3,ease:4,icon:"🔗",strategy:"Engage post-event through LinkedIn recap article.",engagement:"Post-event",frequency:"Post-event",owner:"Kufre Antia"},
+  ];
+  const stakeholders=raw.map(s=>({...s,score:wScore(s),category:autoCategory(s.power,s.interest),color:catColor(autoCategory(s.power,s.interest))})).sort((a,b)=>b.score-a.score);
+
+  return<div>
+    <SecHead title="Stakeholder Analysis" sub="Weighted formula: Power×0.30 + Interest×0.25 + Influence×0.30 + Ease×0.15"/>
+    {/* Priority strip */}
+    <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+      {[["Key Player",B.dk,"#fff"],["Keep Satisfied",B.md,"#fff"],["Keep Informed",B.ac,"#fff"],["Monitor","#888","#fff"]].map(([cat,bg,fg])=>{
+        const count=stakeholders.filter(s=>s.category===cat).length;
+        return count>0?<div key={cat} style={{padding:"6px 14px",borderRadius:99,background:bg,color:fg,fontSize:11,fontWeight:700}}>{count} {cat}</div>:null;
+      })}
+    </div>
+    {/* Stakeholder cards */}
+    <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
+      {stakeholders.map(s=>{
+        const isSel=selected===s.id;const bs=wBandStyle(s.score);
+        return<div key={s.id} style={{background:B.wh,borderRadius:12,border:`1.5px solid ${isSel?B.ac:B.pl}`,overflow:"hidden",borderLeft:`4px solid ${s.color}`}}>
+          <div onClick={()=>setSelected(isSel?null:s.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",cursor:"pointer"}}>
+            <div style={{width:38,height:38,borderRadius:10,background:s.color,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:18}}>{s.icon}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:700,fontSize:13,color:B.dk}}>{s.name}</div>
+              <div style={{fontSize:11,color:B.tg,marginTop:1}}>{s.type} · {s.owner.split(" ")[0]}</div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
+              <span style={{fontSize:11,padding:"2px 9px",borderRadius:20,fontWeight:700,background:bs.bg,color:bs.fg}}>{s.score.toFixed(2)}</span>
+              <span style={{fontSize:10,color:s.color,fontWeight:700}}>{s.category}</span>
+            </div>
+          </div>
+          <div style={{padding:"0 16px 10px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 16px"}}>
+            {[["Power",s.power,W.power],["Interest",s.interest,W.interest],["Influence",s.influence,W.influence],["Ease",s.ease,W.ease]].map(([lbl,val,wt])=>
+              <div key={lbl} style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:10,color:B.tg,width:58,flexShrink:0}}>{lbl} <span style={{opacity:.6}}>×{(wt*100).toFixed(0)}%</span></span>
+                <div style={{flex:1,height:4,borderRadius:99,background:B.pl,overflow:"hidden"}}><div style={{width:`${(val/5)*100}%`,height:"100%",background:s.color,borderRadius:99}}/></div>
+                <span style={{fontSize:10,fontWeight:700,color:s.color,width:14,flexShrink:0}}>{val}</span>
+              </div>
+            )}
+          </div>
+          {isSel&&<div style={{padding:"10px 16px 14px",borderTop:`1px solid ${B.pl}`,background:B.st}}>
+            <div style={{fontSize:12,color:B.tm,lineHeight:1.65,marginBottom:8}}>{s.strategy}</div>
+            <div style={{display:"flex",gap:14,flexWrap:"wrap",fontSize:11,color:B.tg}}>
+              <span>Mode: <b style={{color:B.dk}}>{s.engagement}</b></span>
+              <span>Frequency: <b style={{color:B.dk}}>{s.frequency}</b></span>
+              <span>Owner: <b style={{color:B.dk}}>{s.owner}</b></span>
+            </div>
+          </div>}
+        </div>;
+      })}
+    </div>
+    {/* SVG Power-Interest Matrix */}
+    <Card>
+      <div style={{fontWeight:700,fontSize:14,color:B.dk,marginBottom:4}}>📊 Power–Interest Matrix</div>
+      <div style={{fontSize:11,color:B.tg,marginBottom:10}}>Dot size = Influence. Tap any dot for details.</div>
+      <div style={{overflowX:"auto"}}>
+        <svg viewBox="0 0 520 320" style={{width:"100%",maxWidth:520,display:"block"}} xmlns="http://www.w3.org/2000/svg">
+          <rect x="55" y="15" width="205" height="140" fill="#EBF7EE" rx="4"/>
+          <rect x="268" y="15" width="237" height="140" fill="#C6EFCE" rx="4"/>
+          <rect x="55" y="163" width="205" height="137" fill="#f8f8f8" rx="4"/>
+          <rect x="268" y="163" width="237" height="137" fill="#EBF7EE" rx="4"/>
+          <text x="158" y="32" textAnchor="middle" fontSize="8" fontWeight="700" fill="#607466">KEEP SATISFIED</text>
+          <text x="386" y="32" textAnchor="middle" fontSize="8" fontWeight="700" fill="#1A3C2E">KEY PLAYERS</text>
+          <text x="158" y="178" textAnchor="middle" fontSize="8" fontWeight="700" fill="#aaa">MONITOR</text>
+          <text x="386" y="178" textAnchor="middle" fontSize="8" fontWeight="700" fill="#2D6A4F">KEEP INFORMED</text>
+          <line x1="260" y1="15" x2="260" y2="300" stroke="#74C69D" strokeWidth="1" strokeDasharray="4,3" opacity=".5"/>
+          <line x1="55" y1="157" x2="505" y2="157" stroke="#74C69D" strokeWidth="1" strokeDasharray="4,3" opacity=".5"/>
+          <line x1="50" y1="300" x2="510" y2="300" stroke="#B7DDBC" strokeWidth="1"/>
+          <polygon points="510,297 510,303 515,300" fill="#B7DDBC"/>
+          <line x1="50" y1="305" x2="50" y2="12" stroke="#B7DDBC" strokeWidth="1"/>
+          <polygon points="47,12 53,12 50,7" fill="#B7DDBC"/>
+          <text x="280" y="314" textAnchor="middle" fontSize="9" fill="#607466">Interest →</text>
+          <text x="18" y="157" textAnchor="middle" fontSize="9" fill="#607466" transform="rotate(-90,18,157)">Power →</text>
+          {stakeholders.map(s=>{
+            const cx=55+((s.interest-1)/4)*450;
+            const cy=300-((s.power-1)/4)*285;
+            const r=s.influence*2.5+6;
+            const isSel=selected===s.id;
+            return<g key={s.id} onClick={()=>setSelected(selected===s.id?null:s.id)} style={{cursor:"pointer"}}>
+              {isSel&&<circle cx={cx} cy={cy} r={r+8} fill={s.color} opacity=".15"/>}
+              <circle cx={cx} cy={cy} r={r} fill={s.color} stroke="#fff" strokeWidth="2"/>
+              <text x={cx} y={cy+4} textAnchor="middle" fontSize="9" fontWeight="800" fill="#fff">{s.id}</text>
+            </g>;
+          })}
+        </svg>
+      </div>
+      {selected&&(()=>{const s=stakeholders.find(x=>x.id===selected);if(!s)return null;
+        return<div style={{marginTop:10,padding:"10px 14px",background:B.st,borderRadius:8,borderLeft:`4px solid ${s.color}`}}>
+          <div style={{fontWeight:700,fontSize:13,color:B.dk,marginBottom:4}}>{s.icon} {s.name}</div>
+          <div style={{fontSize:12,color:B.tm,lineHeight:1.6}}>{s.strategy}</div>
+        </div>;
+      })()}
+    </Card>
+  </div>;
+}
+
+// ── Home sub-page: Project Team ───────────────────────────────────────────────
+function HomeTeam({tasks,isMobile}){
+  const coreRoles=[
+    {role:"Project Manager",         resp:"Overall coordination; liaison with NSU",                  who:"Tolulope Idowu",          status:"Assigned"},
+    {role:"Debate Chair / Moderator",resp:"Neutral facilitation; Oxford rules; timekeeping",          who:"Shortlist: Kelechi Ayanso · Barry Gledson · Michelle Littlemore · Pablo Martinez",status:"Shortlisted"},
+    {role:"Proposition Team (2–3)",  resp:"Argue in favour of the motion",                          who:"Kufre Antia (lead) · Lucas, Ikechukwu, Vemula, Judith, Adiyita, Maria",status:"In Selection"},
+    {role:"Opposition Team (2–3)",   resp:"Argue against the motion",                               who:"TBC",                     status:"Open"},
+    {role:"Logistics Lead",          resp:"Reds Hall, AV, seating, 3 mics, signage",                who:"Uchechukwu Maduwuba",     status:"Assigned"},
+    {role:"Comms & Engagement",      resp:"Promotion, registration, attendance",                     who:"All team",                status:"Active"},
+  ];
+  const stBadge=s=>s==="Assigned"||s==="Active"?{bg:"#C6EFCE",fg:"#1A5C2A"}:s==="Shortlisted"||s==="In Selection"?{bg:"#FFF3CD",fg:"#7A5000"}:{bg:"#FFE0E0",fg:"#8B1A1A"};
+  return<div>
+    <SecHead title="Project Team" sub="Northumbria Construct Event Planning Committee"/>
+    <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
+      {TEAM.map(m=>{
+        const mt=tasks.filter(t=>t.owner===m.id);const mp=calcPct(mt);const mc=mt.filter(t=>t.status==="Complete").length;
+        return<Card key={m.id} style={{display:"flex",gap:14,alignItems:"flex-start"}}>
+          <Avatar name={m.name} area={m.area} size={46}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:700,fontSize:14,color:B.dk}}>{m.name}</div>
+            <div style={{fontSize:11,color:B.ac,fontWeight:600,marginBottom:5}}>{m.role}</div>
+            <div style={{fontSize:11,color:B.tg,lineHeight:1.55}}>{m.resp}</div>
+            <div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:9,padding:"2px 9px",borderRadius:20,background:B.pl,color:B.md,fontWeight:700}}>{m.area}</span>
+              <span style={{fontSize:9,color:B.tg}}>{mc}/{mt.length} tasks complete</span>
+            </div>
+            <div style={{marginTop:7,display:"flex",alignItems:"center",gap:6}}><Pbar pct={mp} h={5}/><span style={{fontSize:10,color:B.md,fontWeight:600,minWidth:30}}>{mp}%</span></div>
+          </div>
+        </Card>;
+      })}
+    </div>
+    <Card style={{padding:"0",overflow:"hidden"}}>
+      <div style={{background:B.md,padding:"12px 18px",fontWeight:700,fontSize:14,color:"#fff"}}>Core Delivery Roles</div>
+      {coreRoles.map((r,i)=>{const sc=stBadge(r.status);return<div key={i} style={{padding:"12px 18px",background:i%2===0?B.wh:B.st,borderBottom:`1px solid ${B.pl}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5,flexWrap:"wrap",gap:6}}>
+          <span style={{fontSize:13,fontWeight:700,color:B.dk}}>{r.role}</span>
+          <span style={{fontSize:11,padding:"2px 9px",borderRadius:20,fontWeight:600,background:sc.bg,color:sc.fg}}>{r.status}</span>
+        </div>
+        <div style={{fontSize:11,color:B.tm,marginBottom:3}}>{r.resp}</div>
+        <div style={{fontSize:11,color:B.tg}}>{r.who}</div>
+      </div>;})}
+    </Card>
+  </div>;
+}
+
+// ── Home sub-page: Governance ─────────────────────────────────────────────────
+function HomeGovernance({isMobile}){
+  const decisions=[
+    {type:"Strategic / Scope Changes",  approval:"Project Sponsor + President",  examples:"Changing the motion, moving the venue, cancelling"},
+    {type:"Major Operational Changes",  approval:"President + Project Manager",   examples:"Rescheduling, replacing Chair, changing capacity"},
+    {type:"Minor Operational Changes",  approval:"Project Manager",               examples:"Timetable tweaks, minor comms changes"},
+    {type:"On-Day Decisions",           approval:"Event Lead (Callum O'Connor)",  examples:"Any decision required during the event on 28 April"},
+  ];
+  const gates=[
+    {phase:"Gate 1 — Pre-Planning",       date:"6 Apr", status:"Complete",    check:"Motion confirmed · Venue booked · Roles assigned"},
+    {phase:"Gate 2 — Speaker & Chair Lock",date:"15 Apr",status:"In Progress","check":"Chair confirmed · Speakers confirmed · Briefing packs issued"},
+    {phase:"Gate 3 — Promo & Registration",date:"21 Apr",status:"Not Started","check":"Registration 25+ · AV confirmed · Run-of-show complete"},
+    {phase:"Gate 4 — Go / No-Go",         date:"27 Apr",status:"Not Started","check":"Final walkthrough · Speakers reconfirmed · Venue confirmed"},
+    {phase:"Event Delivery",              date:"28 Apr",status:"Not Started","check":"Event delivered · Feedback captured · Photos collected"},
+    {phase:"Post-Event Closure",          date:"3 May", status:"Not Started","check":"LinkedIn published · Feedback analysed · Lessons documented"},
+  ];
+  const stBadge=s=>s==="Complete"?{bg:"#C6EFCE",fg:"#1A5C2A"}:s==="In Progress"?{bg:"#FFF3CD",fg:"#7A5000"}:{bg:"#e8e8e8",fg:"#777"};
+  return<div>
+    <SecHead title="Project Governance" sub="Decision-making, oversight, change control and gate reviews"/>
+    <Card style={{marginBottom:14}}>
+      <div style={{fontWeight:700,fontSize:14,color:B.dk,marginBottom:12}}>⚖️ Decision Authority Matrix</div>
+      {decisions.map((d,i)=><div key={i} style={{display:"flex",gap:12,padding:"10px 0",borderBottom:i<decisions.length-1?`1px solid ${B.st}`:"none",alignItems:"flex-start"}}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:13,fontWeight:700,color:B.dk,marginBottom:2}}>{d.type}</div>
+          <div style={{fontSize:11,color:B.ac,fontWeight:600,marginBottom:2}}>Approved by: {d.approval}</div>
+          <div style={{fontSize:11,color:B.tg,fontStyle:"italic"}}>{d.examples}</div>
+        </div>
+      </div>)}
+    </Card>
+    <Card style={{marginBottom:14}}>
+      <div style={{fontWeight:700,fontSize:14,color:B.dk,marginBottom:14}}>🚦 Phase Gate Reviews</div>
+      {gates.map(({phase,date,check,status},i)=>{
+        const sc=stBadge(status);const isLast=i===gates.length-1;
+        const dotCol=status==="Complete"?B.dk:status==="In Progress"?B.ac:"#ccc";
+        return<div key={phase} style={{display:"flex",gap:0}}>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:36,flexShrink:0}}>
+            <div style={{width:18,height:18,borderRadius:"50%",background:dotCol,display:"flex",alignItems:"center",justifyContent:"center",zIndex:1,marginTop:4,flexShrink:0}}>
+              {status==="Complete"&&<span style={{fontSize:8,color:"#fff",fontWeight:800}}>✓</span>}
+              {status==="In Progress"&&<span style={{fontSize:7,color:"#fff",fontWeight:800}}>▶</span>}
+            </div>
+            {!isLast&&<div style={{width:2,flex:1,background:status==="Complete"?B.ac:"#e0e0e0",margin:"3px 0"}}/>}
+          </div>
+          <div style={{padding:"2px 0 18px 10px",flex:1}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3,flexWrap:"wrap",gap:4}}>
+              <span style={{fontSize:13,fontWeight:700,color:B.dk}}>{phase} <span style={{fontSize:10,color:B.tg,fontWeight:400}}>({date})</span></span>
+              <span style={{fontSize:10,padding:"2px 8px",borderRadius:20,fontWeight:700,background:sc.bg,color:sc.fg}}>{status}</span>
+            </div>
+            <div style={{fontSize:11,color:B.tg,lineHeight:1.5}}>{check}</div>
+          </div>
+        </div>;
+      })}
+    </Card>
+    <Card>
+      <div style={{fontWeight:700,fontSize:14,color:B.dk,marginBottom:12}}>🔄 Change Control Process</div>
+      <div style={{display:"flex",overflowX:"auto",gap:0,paddingBottom:4}}>
+        {[{n:"1",t:"Identify",d:"Document change with reason & impact",ic:"🔍"},{n:"2",t:"Assess",d:"PM evaluates impact on programme & budget",ic:"📊"},{n:"3",t:"Approve",d:"Minor→PM · Major→President · Critical→Sponsor",ic:"✅"},{n:"4",t:"Implement",d:"Change actioned; all documents updated",ic:"⚡"},{n:"5",t:"Review",d:"Reviewed at next check-in; lessons captured",ic:"📝"}].map(({n,t,d,ic},i,arr)=>
+          <div key={n} style={{display:"flex",alignItems:"stretch",flexShrink:0}}>
+            <div style={{width:isMobile?120:140,background:i%2===0?B.dk:B.md,borderRadius:i===0?"10px 0 0 10px":i===arr.length-1?"0 10px 10px 0":"0",padding:"12px 12px",display:"flex",flexDirection:"column",gap:5}}>
+              <div style={{fontSize:8,color:"rgba(255,255,255,.5)",fontWeight:700}}>{n}</div>
+              <div style={{fontSize:15}}>{ic}</div>
+              <div style={{fontSize:11,fontWeight:800,color:"#fff"}}>{t}</div>
+              <div style={{fontSize:9,color:"rgba(255,255,255,.6)",lineHeight:1.4}}>{d}</div>
+            </div>
+            {i<arr.length-1&&<div style={{width:0,height:0,borderTop:"24px solid transparent",borderBottom:"24px solid transparent",borderLeft:`14px solid ${i%2===0?B.dk:B.md}`,alignSelf:"center",flexShrink:0}}/>}
+          </div>
+        )}
+      </div>
+    </Card>
+  </div>;
+}
+
+// ── Home wrapper with sub-page navigation ─────────────────────────────────────
+function Home({isMobile,onNav,tasks}){
+  const[subPage,setSubPage]=useState("brief");
+  const subPages=[
+    {id:"brief",       label:"Project Brief",  icon:"📄"},
+    {id:"stakeholders",label:"Stakeholders",   icon:"🗺"},
+    {id:"team",        label:"Project Team",   icon:"👥"},
+    {id:"governance",  label:"Governance",     icon:"🏛"},
+  ];
+  return<div>
+    {/* Underline tab nav */}
+    <div style={{display:"flex",gap:0,marginBottom:20,borderBottom:`2px solid ${B.pl}`,overflowX:"auto"}}>
+      {subPages.map(p=>(
+        <button key={p.id} onClick={()=>setSubPage(p.id)} style={{
+          display:"flex",alignItems:"center",gap:6,
+          padding:isMobile?"10px 12px":"11px 18px",
+          border:"none",borderBottom:`3px solid ${subPage===p.id?B.ac:"transparent"}`,
+          marginBottom:"-2px",background:"transparent",
+          color:subPage===p.id?B.dk:B.tg,
+          fontSize:isMobile?11:12,fontWeight:subPage===p.id?800:600,
+          cursor:"pointer",flexShrink:0,whiteSpace:"nowrap",transition:"color .15s",
+        }}>
+          <span>{p.icon}</span><span>{p.label}</span>
+        </button>
+      ))}
+    </div>
+    {subPage==="brief"        &&<HomeBrief isMobile={isMobile} onNav={onNav}/>}
+    {subPage==="stakeholders" &&<HomeStakeholders isMobile={isMobile}/>}
+    {subPage==="team"         &&<HomeTeam tasks={tasks} isMobile={isMobile}/>}
+    {subPage==="governance"   &&<HomeGovernance isMobile={isMobile}/>}
+  </div>;
+}
+
+
 
 // ════════════════════════════════════════════════════════════
 // DASHBOARD
@@ -435,7 +720,16 @@ function RaciMatrix({tasks,setTasks,raci,setRaci,setToast,isMobile}){
     setRaci(prev=>{const row=prev[taskId]||{};const cur=row[memberId]||"";const next=RACI_CYCLE[(RACI_CYCLE.indexOf(cur)+1)%RACI_CYCLE.length];return{...prev,[taskId]:{...row,[memberId]:next}};});
   }
 
-  function handleSave(saved){setTasks(ts=>ts.map(t=>t.id===saved.id?{...saved,updatedAt:Date.now()}:t));setModal(null);setToast(`✓ Task #${saved.id} updated — Gantt & Report synced`);}
+  async function handleSave(saved){
+    const updated={...saved,updatedAt:Date.now()};
+    setTasks(ts=>ts.map(t=>t.id===updated.id? updated:t));
+    setModal(null);
+    setToast(`✓ Task #${saved.id} updated — Gantt & Report synced`);
+   try{
+    await fetch('/api/update-task',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(updated)});
+  }catch(e){console.error(e);}
+  }
+  
   function handleDelete(id){setTasks(ts=>ts.filter(t=>t.id!==id));setModal(null);setToast("Task deleted");}
 
   const warns=tasks.filter(t=>{const r=raci[t.id]||{};const v=Object.values(r);return!v.includes("R")||!v.includes("A");});
@@ -715,41 +1009,62 @@ function Team({tasks,isMobile}){
 }
 
 // ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
 // ROOT
 // ════════════════════════════════════════════════════════════
 export default function App(){
   const isMobile=useIsMobile();
   const[tab,setTab]=useState("home");
-  const[tasks,setTasks]=useState(()=>loadState("nc_tasks_v2",DEFAULT_TASKS));
+
+  // const[tasks,setTasks]=useState(()=>loadState("nc_tasks_v2",DEFAULT_TASKS));
+
+const [tasks, setTasks] = useState(DEFAULT_TASKS);
+
+// useEffect(() => {
+//   fetch('/api/tasks')
+//     .then(r => r.json())
+//     .then(data => {
+//       if (Array.isArray(data)) setTasks(data);
+//     })
+//     .catch(e => console.error('Failed to load tasks:', e));
+// }, []);
+
   const[raci,setRaci]=useState(()=>loadState("nc_raci_v2",DEFAULT_RACI));
   const[toast,setToast]=useState("");
 
   // ── Shared save state ──────────────────────────────────────────────────────
-  const[saveStatus,setSaveStatus]=useState("idle"); // idle | saving | saved | error | loading
-  const[lastSaved,setLastSaved]=useState(null);     // {by, at} from server
-  const[hasRemote,setHasRemote]=useState(false);    // true once we've confirmed server is reachable
+  const[saveStatus,setSaveStatus]=useState("idle");
+  const[lastSaved,setLastSaved]=useState(null);
+  const[hasRemote,setHasRemote]=useState(false);
 
-  // ── On mount: load from shared server, fall back to localStorage ───────────
+  // ── Load from server on mount — with full validation ──────────────────────
   useEffect(()=>{
     async function loadFromServer(){
       setSaveStatus("loading");
       try{
         const res=await fetch("/api/state");
-        if(!res.ok)throw new Error("Server unreachable");
+        if(!res.ok) throw new Error("unreachable");
         const data=await res.json();
         setHasRemote(true);
-        if(data.exists){
-          // Server has saved state — use it (it's newer / shared across all users)
+        // Only apply if data is valid — prevents blank screen from corrupt saves
+        if(
+          data.exists===true &&
+          Array.isArray(data.tasks) &&
+          data.tasks.length>0 &&
+          data.tasks[0]!=null &&
+          data.tasks[0].id!==undefined
+        ){
           setTasks(data.tasks);
-          setRaci(data.raci||DEFAULT_RACI);
-          setLastSaved({by:data.savedBy,at:data.savedAt});
-          // Mirror to localStorage as backup
+          if(data.raci && typeof data.raci==="object" && !Array.isArray(data.raci)){
+            setRaci(data.raci);
+          }
+          setLastSaved({by:data.savedBy||"", at:data.savedAt||""});
           try{localStorage.setItem("nc_tasks_v2",JSON.stringify(data.tasks));}catch{}
           try{localStorage.setItem("nc_raci_v2",JSON.stringify(data.raci||DEFAULT_RACI));}catch{}
         }
         setSaveStatus("idle");
       }catch(err){
-        // No server / KV not set up yet — fall through to localStorage (already loaded)
+        // Server not reachable — silently fall through to localStorage data
         setHasRemote(false);
         setSaveStatus("idle");
       }
@@ -757,37 +1072,30 @@ export default function App(){
     loadFromServer();
   },[]);
 
-  // ── Keep localStorage in sync locally (instant, no network) ───────────────
+  // ── Keep localStorage in sync as local backup ──────────────────────────────
   useEffect(()=>{try{localStorage.setItem("nc_tasks_v2",JSON.stringify(tasks));}catch{}},[tasks]);
   useEffect(()=>{try{localStorage.setItem("nc_raci_v2",JSON.stringify(raci));}catch{}},[raci]);
   useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(""),3500);return()=>clearTimeout(t);},[toast]);
 
-  // ── Shared save — pushes to server so ALL users get the update ─────────────
+  // ── Push state to server so all users share the same data ─────────────────
   async function saveToServer(){
     setSaveStatus("saving");
-    const now=new Date().toISOString();
-    const payload={
-      tasks,
-      raci,
-      savedBy:"Committee Member",
-      savedAt:new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}),
-    };
+    const savedAt=new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
     try{
       const res=await fetch("/api/state",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify(payload),
+        body:JSON.stringify({tasks,raci,savedBy:"Committee Member",savedAt}),
       });
       if(!res.ok){const e=await res.json();throw new Error(e.error||"Save failed");}
-      const data=await res.json();
-      setLastSaved({by:payload.savedBy,at:payload.savedAt});
+      setLastSaved({by:"Committee Member",at:savedAt});
       setHasRemote(true);
       setSaveStatus("saved");
       setToast("☁ Saved — all users will see this when they refresh");
       setTimeout(()=>setSaveStatus("idle"),3000);
     }catch(err){
       setSaveStatus("error");
-      setToast("⚠ Save failed — changes kept locally. Check Vercel KV is connected.");
+      setToast("⚠ Save failed — changes kept locally");
       setTimeout(()=>setSaveStatus("idle"),4000);
     }
   }
@@ -800,18 +1108,22 @@ export default function App(){
     setToast("⬇ CSV exported");
   }
 
-  // ── Save button appearance ─────────────────────────────────────────────────
-  const saveBtnStyle={
-    padding:"5px 14px",borderRadius:20,fontSize:11,fontWeight:700,
-    border:"none",cursor:saveStatus==="saving"?"wait":"pointer",
-    transition:"all .2s",
-  };
-  const saveBtnProps=
-    saveStatus==="saving" ? {bg:"rgba(255,255,255,.15)",fg:"rgba(255,255,255,.5)",label:"Saving…"}
-  : saveStatus==="saved"  ? {bg:"#1A5C2A",             fg:"#74C69D",             label:"✓ Saved"}
-  : saveStatus==="error"  ? {bg:"#8B1A1A",             fg:"#FFE0E0",             label:"⚠ Failed"}
-  : saveStatus==="loading"? {bg:"rgba(255,255,255,.08)",fg:"rgba(255,255,255,.4)",label:"Loading…"}
-  :                         {bg:"rgba(255,255,255,.12)", fg:"#fff",              label:"☁ Save"};
+  // ── Save button label & colours ────────────────────────────────────────────
+  const saveLabel=
+    saveStatus==="saving"  ? "Saving…"
+  : saveStatus==="saved"   ? "✓ Saved"
+  : saveStatus==="error"   ? "⚠ Failed"
+  : saveStatus==="loading" ? "Loading…"
+  :                          "☁ Save";
+  const saveBg=
+    saveStatus==="saved"  ? "#1A5C2A"
+  : saveStatus==="error"  ? "#8B1A1A"
+  :                         "rgba(255,255,255,.12)";
+  const saveFg=
+    saveStatus==="saved"  ? "#74C69D"
+  : saveStatus==="error"  ? "#FFE0E0"
+  : saveStatus==="loading"? "rgba(255,255,255,.4)"
+  :                         "#fff";
 
   const TABS=[
     {id:"home",     label:"Home",   icon:"🏠"},
@@ -824,6 +1136,8 @@ export default function App(){
   ];
 
   return<div style={{fontFamily:"'Segoe UI',system-ui,sans-serif",background:B.st,minHeight:"100vh",color:B.tx,paddingBottom:isMobile?80:0}}>
+
+    {/* ── HEADER ── */}
     <div style={{background:B.dk,padding:`0 ${isMobile?12:20}px`,display:"flex",alignItems:"center",gap:12,height:54,position:"sticky",top:0,zIndex:200,boxShadow:"0 2px 8px rgba(0,0,0,.2)"}}>
       <div style={{width:34,height:34,borderRadius:"50%",background:B.lt,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
         <span style={{fontSize:12,fontWeight:700,color:B.dk}}>NC</span>
@@ -832,7 +1146,7 @@ export default function App(){
         <div style={{color:"#fff",fontWeight:700,fontSize:14,lineHeight:1.1}}>Northumbria Construct</div>
         {!isMobile&&<div style={{color:B.lt,fontSize:10}}>
           Oxford Debate · 28 April 2026
-          {lastSaved&&<span style={{opacity:.6}}> · Last saved {lastSaved.at}</span>}
+          {lastSaved&&<span style={{opacity:.6}}> · Saved {lastSaved.at}</span>}
           {!hasRemote&&saveStatus==="idle"&&<span style={{color:"#F0C040",marginLeft:6}}>· local only</span>}
         </div>}
       </div>
@@ -840,25 +1154,23 @@ export default function App(){
         {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"5px 11px",borderRadius:20,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,transition:"all .15s",background:tab===t.id?B.lt:"transparent",color:tab===t.id?B.dk:B.pl}}>{t.icon} {t.label}</button>)}
       </div>}
       <div style={{display:"flex",gap:6,flexShrink:0}}>
-        {/* ── SAVE BUTTON ── */}
         <button
           onClick={saveToServer}
           disabled={saveStatus==="saving"||saveStatus==="loading"}
-          style={{...saveBtnStyle,background:saveBtnProps.bg,color:saveBtnProps.fg}}
-        >{saveBtnProps.label}</button>
-        {/* ── CSV EXPORT ── */}
+          style={{padding:"5px 14px",borderRadius:20,fontSize:11,fontWeight:700,border:"none",cursor:saveStatus==="saving"?"wait":"pointer",background:saveBg,color:saveFg,transition:"all .2s"}}
+        >{saveLabel}</button>
         <button onClick={exportCSV} style={{padding:"5px 11px",borderRadius:20,fontSize:11,fontWeight:600,background:"rgba(116,198,157,.2)",color:B.lt,border:"1px solid rgba(116,198,157,.3)",cursor:"pointer"}}>⬇ CSV</button>
       </div>
     </div>
 
-    {/* Banner shown when server save is not yet configured */}
+    {/* Warning banner — only shows when server not connected */}
     {!hasRemote&&saveStatus==="idle"&&<div style={{background:"#FFF3CD",borderBottom:"1px solid #F0C040",padding:"8px 20px",fontSize:12,color:"#7A5000",display:"flex",alignItems:"center",gap:10}}>
       <span>⚠</span>
-      <span>Shared save not connected — changes save locally only. Set up <b>Vercel KV</b> to enable the Save button for all users. See README for instructions.</span>
+      <span>Shared save not connected — changes are saving locally only.</span>
     </div>}
 
     <div style={{maxWidth:1280,margin:"0 auto",padding:isMobile?"16px 14px":"22px 18px"}}>
-      {tab==="home"     &&<Home isMobile={isMobile} onNav={setTab}/>}
+      {tab==="home"     &&<Home isMobile={isMobile} onNav={setTab} tasks={tasks}/>}
       {tab==="dashboard"&&<Dashboard tasks={tasks} onNav={setTab} isMobile={isMobile}/>}
       {tab==="tasks"    &&<TaskTracker tasks={tasks} setTasks={setTasks} setToast={setToast} isMobile={isMobile}/>}
       {tab==="gantt"    &&<GanttChart tasks={tasks} setTasks={setTasks} setToast={setToast} isMobile={isMobile}/>}
@@ -867,16 +1179,19 @@ export default function App(){
       {tab==="report"   &&<FinalReport tasks={tasks} raci={raci} isMobile={isMobile}/>}
     </div>
 
+    {/* ── MOBILE BOTTOM NAV ── */}
     {isMobile&&<div style={{position:"fixed",bottom:0,left:0,right:0,background:B.wh,borderTop:`1px solid ${B.pl}`,display:"flex",zIndex:200,paddingBottom:"env(safe-area-inset-bottom)"}}>
       {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,border:"none",background:"transparent",padding:"8px 2px 6px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:0}}>
         <span style={{fontSize:16}}>{t.icon}</span>
         <span style={{fontSize:8,fontWeight:700,color:tab===t.id?B.ac:B.tg,lineHeight:1}}>{t.label}</span>
         {tab===t.id&&<div style={{width:16,height:3,borderRadius:99,background:B.ac}}/>}
       </button>)}
-      {/* Mobile save button sits above the tab bar */}
-      <button onClick={saveToServer} disabled={saveStatus==="saving"||saveStatus==="loading"} style={{position:"absolute",top:-40,right:14,padding:"7px 16px",borderRadius:99,fontSize:12,fontWeight:700,border:"none",cursor:"pointer",background:saveStatus==="saved"?"#1A5C2A":B.dk,color:saveStatus==="saved"?"#74C69D":"#fff",boxShadow:"0 2px 8px rgba(0,0,0,.3)"}}>
-        {saveBtnProps.label}
-      </button>
+      {/* Mobile save button — floats above tab bar */}
+      <button
+        onClick={saveToServer}
+        disabled={saveStatus==="saving"||saveStatus==="loading"}
+        style={{position:"absolute",top:-40,right:14,padding:"7px 16px",borderRadius:99,fontSize:12,fontWeight:700,border:"none",cursor:"pointer",background:saveStatus==="saved"?"#1A5C2A":B.dk,color:saveStatus==="saved"?"#74C69D":"#fff",boxShadow:"0 2px 8px rgba(0,0,0,.3)"}}
+      >{saveLabel}</button>
     </div>}
 
     <Toast msg={toast}/>

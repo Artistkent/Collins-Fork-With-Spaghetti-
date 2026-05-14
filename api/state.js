@@ -1,131 +1,100 @@
-// api/state.js — NC Platform shared state via Upstash Redis
+import { neon } from '@neondatabase/serverless';
 
-const STATE_KEY = "nc_shared_state_v1";
-const KV_URL   = process.env.SaveState_KV_REST_API_URL   || process.env.KV_REST_API_URL;
-const KV_TOKEN = process.env.SaveState_KV_REST_API_TOKEN || process.env.KV_REST_API_TOKEN;
+const sql = neon(process.env.DATABASE_URL);
 
-// ── Upstash REST API helpers ──────────────────────────────────────────────────
-// Uses the /pipeline endpoint — most reliable for large JSON values
-async function kvGet(key) {
-  const res = await fetch(`${KV_URL}/pipeline`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${KV_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify([["GET", key]]),
-  });
-  if (!res.ok) throw new Error(`kvGet HTTP ${res.status}`);
-  const json = await res.json();
-  // Pipeline returns array of results: [{ result: "value" }]
-  return json[0]?.result ?? null;
-}
-
-async function kvSet(key, value) {
-  const res = await fetch(`${KV_URL}/pipeline`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${KV_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify([["SET", key, value]]),
-  });
-  if (!res.ok) throw new Error(`kvSet HTTP ${res.status}`);
-  const json = await res.json();
-  if (json[0]?.error) throw new Error(`kvSet error: ${json[0].error}`);
-  return true;
-}
-
-async function kvDel(key) {
-  const res = await fetch(`${KV_URL}/pipeline`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${KV_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify([["DEL", key]]),
-  });
-  if (!res.ok) throw new Error(`kvDel HTTP ${res.status}`);
-  return true;
-}
-
-// ── Handler ───────────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  // Env var guard
-  if (!KV_URL || !KV_TOKEN) {
-    const found = Object.keys(process.env).filter(k =>
-      k.includes("SaveState") || k.includes("KV") || k.includes("UPSTASH")
-    );
-    console.error("Missing env vars. Found:", found);
-    return res.status(200).json({ exists: false, debug: "env vars missing", found });
-  }
-
-  // ── CLEAR — visit /api/state?clear=1 to reset ──────────────────────────────
-  if (req.method === "DELETE" || req.query?.clear === "1") {
-    try {
-      await kvDel(STATE_KEY);
-      return res.status(200).json({ ok: true, message: "Cleared — app uses default data" });
-    } catch (err) {
-      return res.status(500).json({ error: "Clear failed", detail: err.message });
-    }
-  }
-
-  // ── GET — load shared state ────────────────────────────────────────────────
+  // ── GET — load all tasks and RACI from Neon ──
   if (req.method === "GET") {
     try {
-      const stored = await kvGet(STATE_KEY);
+      const tasks = await sql`SELECT * FROM tasks ORDER BY id`;
+      const raciRows = await sql`SELECT data, saved_by, saved_at FROM raci_state WHERE id = 1`;
 
-      // Nothing saved yet
-      if (!stored) return res.status(200).json({ exists: false });
+      if (tasks.length === 0) return res.status(200).json({ exists: false });
 
-      let state;
-      try { state = JSON.parse(stored); }
-      catch { await kvDel(STATE_KEY); return res.status(200).json({ exists: false }); }
+      const raci = raciRows.length > 0 ? JSON.parse(raciRows[0].data) : {};
+      const savedBy = raciRows[0]?.saved_by ?? "";
+      const savedAt = raciRows[0]?.saved_at ?? "";
 
-      // Validate — auto-clear if corrupt
-      if (!Array.isArray(state.tasks) || state.tasks.length === 0) {
-        await kvDel(STATE_KEY);
-        return res.status(200).json({ exists: false });
-      }
+      // Map DB column names back to what the app expects
+      const mapped = tasks.map(t => ({
+        id:        t.id,
+        desc:      t.description,
+        owner:     t.owner,
+        start:     t.start_date,
+        end:       t.end_date,
+        status:    t.status,
+        pri:       t.priority,
+        deps:      t.deps,
+        notes:     t.notes,
+        pct:       t.pct,
+        updatedAt: t.updated_at,
+      }));
 
-      return res.status(200).json({ exists: true, ...state });
+      return res.status(200).json({ exists: true, tasks: mapped, raci, savedBy, savedAt });
     } catch (err) {
       console.error("GET error:", err.message);
       return res.status(500).json({ error: "Failed to load", detail: err.message });
     }
   }
 
-  // ── POST — save shared state ───────────────────────────────────────────────
+  // ── POST — save all tasks and RACI to Neon ──
   if (req.method === "POST") {
     try {
-      const body = req.body;
+      const { tasks, raci, savedBy, savedAt } = req.body;
 
-      if (!body?.tasks || !Array.isArray(body.tasks) || body.tasks.length === 0) {
+      if (!Array.isArray(tasks) || tasks.length === 0) {
         return res.status(400).json({ error: "Valid tasks array required" });
       }
 
-      const payload = JSON.stringify({
-        tasks:   body.tasks,
-        raci:    body.raci    ?? {},
-        savedBy: body.savedBy ?? "Committee Member",
-        savedAt: body.savedAt ?? new Date().toISOString(),
-      });
+      // Upsert each task (insert or update if already exists)
+      for (const t of tasks) {
+        await sql`
+          INSERT INTO tasks (id, description, owner, start_date, end_date, status, priority, deps, notes, pct, updated_at)
+          VALUES (${t.id}, ${t.desc}, ${t.owner}, ${t.start}, ${t.end}, ${t.status}, ${t.pri}, ${t.deps}, ${t.notes}, ${t.pct}, ${t.updatedAt ?? null})
+          ON CONFLICT (id) DO UPDATE SET
+            description = EXCLUDED.description,
+            owner       = EXCLUDED.owner,
+            start_date  = EXCLUDED.start_date,
+            end_date    = EXCLUDED.end_date,
+            status      = EXCLUDED.status,
+            priority    = EXCLUDED.priority,
+            deps        = EXCLUDED.deps,
+            notes       = EXCLUDED.notes,
+            pct         = EXCLUDED.pct,
+            updated_at  = EXCLUDED.updated_at
+        `;
+      }
 
-      await kvSet(STATE_KEY, payload);
+      // Save RACI as JSON
+      await sql`
+        INSERT INTO raci_state (id, data, saved_by, saved_at)
+        VALUES (1, ${JSON.stringify(raci)}, ${savedBy}, ${savedAt})
+        ON CONFLICT (id) DO UPDATE SET
+          data     = EXCLUDED.data,
+          saved_by = EXCLUDED.saved_by,
+          saved_at = EXCLUDED.saved_at
+      `;
 
-      return res.status(200).json({
-        ok: true,
-        taskCount: body.tasks.length,
-        savedAt: body.savedAt,
-      });
+      return res.status(200).json({ ok: true, taskCount: tasks.length, savedAt });
     } catch (err) {
       console.error("POST error:", err.message);
       return res.status(500).json({ error: "Failed to save", detail: err.message });
+    }
+  }
+
+  // ── DELETE — reset everything ──
+  if (req.method === "DELETE") {
+    try {
+      await sql`DELETE FROM tasks`;
+      await sql`DELETE FROM raci_state`;
+      return res.status(200).json({ ok: true, message: "Cleared" });
+    } catch (err) {
+      return res.status(500).json({ error: "Clear failed", detail: err.message });
     }
   }
 
