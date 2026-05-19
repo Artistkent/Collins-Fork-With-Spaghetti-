@@ -1,25 +1,7 @@
 import { useState, useEffect } from "react";
 
 const DEFAULT_TASKS=[
-  {id:1, desc:"Confirm event date & format",       owner:"callum",    start:"2026-04-06",end:"2026-04-06",status:"Complete",   pri:"Critical",deps:"",    notes:"Event fixed for 28 April",                                        pct:100},
-  {id:2, desc:"Finalise debate motion",            owner:"kufre",     start:"2026-04-06",end:"2026-04-06",status:"Complete",   pri:"High",    deps:"1",   notes:"Single motion only",                                              pct:100},
-  {id:3, desc:"Submit Event and Location booking", owner:"tolulope",  start:"2026-04-06",end:"2026-04-07",status:"Complete",   pri:"High",    deps:"1",   notes:"NSU approval confirmed",                                          pct:100},
-  {id:4, desc:"Confirm Debate Chair",              owner:"callum",    start:"2026-04-07",end:"2026-04-08",status:"Not Started",pri:"High",    deps:"3",   notes:"Kelechi Ayanso, Barry Gledson, Michelle Littlemore, Pablo Martinez",pct:0},
-  {id:5, desc:"Invitation for speakers",           owner:"tolulope",  start:"2026-04-08",end:"2026-04-09",status:"In Progress",pri:"High",    deps:"2,4", notes:"Prop & Opp — invitations sent",                                   pct:0},
-  {id:6, desc:"Confirm speakers + reserves",       owner:"kufre",     start:"2026-04-09",end:"2026-04-11",status:"Not Started",pri:"High",    deps:"5",   notes:"Kufre, Lucas, Ikechukwu, Vemula, Judith, Adiyita, Maria",         pct:0},
-  {id:7, desc:"Issue speaker briefing pack",       owner:"kufre",     start:"2026-04-11",end:"2026-04-11",status:"Not Started",pri:"Medium",  deps:"6",   notes:"Oxford rules",                                                    pct:0},
-  {id:8, desc:"Launch promotion",                  owner:"tolulope",  start:"2026-04-12",end:"2026-04-23",status:"Not Started",pri:"High",    deps:"2,3", notes:"LinkedIn + reps",                                                 pct:0},
-  {id:9, desc:"Open registration form",            owner:"tolulope",  start:"2026-04-12",end:"2026-04-27",status:"Not Started",pri:"Medium",  deps:"8",   notes:"MS Forms",                                                        pct:0},
-  {id:10,desc:"Engage academic reps & societies",  owner:"tolulope",  start:"2026-04-14",end:"2026-04-17",status:"Not Started",pri:"Medium",  deps:"8",   notes:"Dept amplification",                                              pct:0},
-  {id:11,desc:"Prepare debate run-of-show",        owner:"callum",    start:"2026-04-14",end:"2026-04-15",status:"Not Started",pri:"Medium",  deps:"4,6", notes:"Chair script",                                                    pct:0},
-  {id:12,desc:"Prepare voting forms (QR)",         owner:"kufre",     start:"2026-04-16",end:"2026-04-18",status:"Not Started",pri:"Medium",  deps:"2",   notes:"Pre & post vote",                                                 pct:0},
-  {id:13,desc:"Confirm AV & room setup",           owner:"uchechukwu",start:"2026-04-18",end:"2026-04-21",status:"Not Started",pri:"High",    deps:"3",   notes:"3 microphones, projector",                                        pct:0},
-  {id:14,desc:"Promotion reminder push",           owner:"tolulope",  start:"2026-04-21",end:"2026-04-22",status:"Not Started",pri:"Medium",  deps:"8,9", notes:"Attendance boost",                                                pct:0},
-  {id:15,desc:"Speaker reconfirmation",            owner:"kufre",     start:"2026-04-23",end:"2026-04-24",status:"Not Started",pri:"High",    deps:"6",   notes:"No-shows risk",                                                   pct:0},
-  {id:16,desc:"Final logistics walkthrough",       owner:"uchechukwu",start:"2026-04-27",end:"2026-04-27",status:"Not Started",pri:"High",    deps:"13",  notes:"Go / No-go check",                                                pct:0},
-  {id:17,desc:"DELIVER EVENT",                     owner:"callum",    start:"2026-04-28",end:"2026-04-28",status:"Not Started",pri:"Critical",deps:"16",  notes:"Event day — Reds Hall",                                           pct:0},
-  {id:18,desc:"Publish LinkedIn article",          owner:"kufre",     start:"2026-04-29",end:"2026-05-01",status:"Not Started",pri:"Medium",  deps:"17",  notes:"Post-event output",                                               pct:0},
-  {id:19,desc:"Capture feedback & lessons learned",owner:"tolulope",  start:"2026-04-29",end:"2026-05-03",status:"Not Started",pri:"Medium",  deps:"17",  notes:"Repeatability",                                                   pct:0},
+  {id:1, desc:"Default",       owner:"Collins",    start:"2026-01-01",end:"2026-12-31",status:"Complete",   pri:"High", deps:"",    notes:"NIL",                                        pct:100}
 ]; 
 
 // ── Brand ─────────────────────────────────────────────────────────────────────
@@ -135,6 +117,7 @@ function TaskModal({task,onSave,onDelete,onClose}){
   useEffect(()=>{const h=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",h);document.body.style.overflow="hidden";return()=>{window.removeEventListener("keydown",h);document.body.style.overflow="";};},[onClose]);
   const lbl={display:"block",fontSize:11,fontWeight:700,color:B.tg,marginBottom:5,textTransform:"uppercase",letterSpacing:.5};
   const inp={width:"100%",padding:"10px 12px",border:`1.5px solid ${B.pl}`,borderRadius:10,color:B.tx,background:B.st,fontSize:14,WebkitAppearance:"none",boxSizing:"border-box"};
+  
   return<div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,background:"rgba(26,60,46,.55)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
     <div style={{background:B.wh,borderRadius:"18px 18px 0 0",padding:"24px 20px 32px",width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto"}}>
       <div style={{width:40,height:4,borderRadius:99,background:"#ddd",margin:"0 auto 18px"}}/>
