@@ -10,7 +10,6 @@ import fs from "fs";
 import path from "path";
 import mammoth from "mammoth";
 import XLSX from "xlsx";
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 export const config = { api: { bodyParser: false } }; // needed for file uploads
 
@@ -25,17 +24,12 @@ async function extractText(filePath, mimeType, originalName){
   }
 
   // PDF
-  if (ext === ".pdf" || mimeType === "application/pdf"){
-    const data    = new Uint8Array(fs.readFileSync(filePath));
-    const doc     = await getDocument({ data }).promise;
-    let text      = "";
-    for (let i = 1; i <= doc.numPages; i++){
-      const page    = await doc.getPage(i);
-      const content = await page.getTextContent();
-      text += content.items.map(item => item.str).join(" ") + "\n";
-    }
-    return text;
-  }
+if (ext === ".pdf" || mimeType === "application/pdf"){
+  const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default;
+  const buffer   = fs.readFileSync(filePath);
+  const data     = await pdfParse(buffer);
+  return data.text;
+}
 
   // XLSX / XLS / CSV
   if ([".xlsx",".xls",".csv"].includes(ext)){
