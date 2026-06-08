@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import * as XLSX from "xlsx"; // npm install xlsx
+
 
 const DEFAULT_TASKS=[
   {id:1, desc:"Default",       owner:"Collins",    start:"2026-01-01",end:"2026-12-31",status:"Complete",   pri:"High", deps:"",    notes:"NIL",                                        pct:100}
@@ -61,6 +63,241 @@ const DEFAULT_RACI={
   19:{callum:"A",sandhya:"I",kufre:"C",tolulope:"R",uchechukwu:"I"},
 };
 
+// ── Auth & Role Definitions ──────────────────────────────────────────────────
+// NOTE: These passwords live client-side — fine for an internal committee tool.
+// For production auth, validate credentials server-side via /api/login.
+const PROJECT_CODE="NC2026";
+const MEMBER_AUTH={
+  callum:     {password:"callum26",  role:"admin"},
+  sandhya:    {password:"sandhya26", role:"admin"},
+  kufre:      {password:"kufre26",   role:"pm"},
+  tolulope:   {password:"tolu26",    role:"pm"},
+  uchechukwu: {password:"uche26",    role:"member"},
+  viewer:     {password:"view26",    role:"viewer"},
+};
+const ROLE_DEFS={
+  admin: {label:"Admin",            badge:"#1A3C2E",canEdit:["desc","owner","start","end","status","pri","pct","deps","notes"],canCreate:true, canDelete:true, tabs:["home","dashboard","tasks","gantt","raci","team","report","edit"]},
+  pm:    {label:"Project Manager",  badge:"#2D6A4F",canEdit:["desc","owner","start","end","status","pri","pct","deps","notes"],canCreate:true, canDelete:false,tabs:["home","dashboard","tasks","gantt","raci","team","report","edit"]},
+  member:{label:"Committee Member", badge:"#40916C",canEdit:["status","pct","notes"],                                         canCreate:false,canDelete:false,tabs:["home","dashboard","tasks","gantt","raci","team","report","edit"]},
+  viewer:{label:"Viewer",           badge:"#607466",canEdit:[],                                                               canCreate:false,canDelete:false,tabs:["home","dashboard","report"]},
+};
+
+// ── Create Project Wizard ─────────────────────────────────────────────────────
+function CreateProjectWizard({onComplete,onBack}){
+  const[step,setStep]=useState(1);
+  const[projName,setProjName]=useState("");
+  const[projCode,setProjCode]=useState("");
+  const[adminPw,setAdminPw]=useState("");
+  const[projDesc,setProjDesc]=useState("");
+  const[tasks,setTasks]=useState([
+    {id:1,desc:"",owner:TEAM[0].id,start:"",end:"",status:"Not Started",pri:"Medium",pct:0,deps:"",notes:""},
+  ]);
+  const[saving,setSaving]=useState(false);
+  const[err,setErr]=useState("");
+
+//Toggle for password eye
+
+    const [type, setType] = useState('password');
+
+const handleToggle = () => setType(t => t === 'password' ? 'text' : 'password');
+
+
+  function addTask(){
+    const nid=tasks.length?Math.max(...tasks.map(t=>t.id))+1:1;
+    setTasks(ts=>[...ts,{id:nid,desc:"",owner:TEAM[0].id,start:"",end:"",status:"Not Started",pri:"Medium",pct:0,deps:"",notes:""}]);
+  }
+  function updTask(i,k,v){setTasks(ts=>ts.map((t,j)=>j===i?{...t,[k]:v}:t));}
+  function removeTask(i){setTasks(ts=>ts.filter((_,j)=>j!==i));}
+
+  async function handleSave(){
+    if(!projName.trim()||!projCode.trim()||!adminPw.trim()){setErr("Project name, code and password are required.");return;}
+    if(tasks.some(t=>!t.desc.trim())){setErr("All tasks must have a description.");return;}
+    setSaving(true);setErr("");
+    try{
+      const res=await fetch("/api/create-project",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({projectCode:projCode.toUpperCase(),projectName:projName,description:projDesc,adminPassword:adminPw,tasks}),
+      });
+      if(!res.ok){const e=await res.json();throw new Error(e.error||"Save failed");}
+      onComplete({projectName:projName,projectCode:projCode.toUpperCase(),adminPassword:adminPw,tasks});
+    }catch(e){setErr(`Failed to save: ${e.message}`);}
+    finally{setSaving(false);}
+  }
+
+  const fi={width:"100%",padding:"9px 12px",border:"1.5px solid #D8F3DC",borderRadius:9,fontSize:13,color:"#1C2B22",background:"#fff",boxSizing:"border-box"};
+  const pBtn=(bg,fg,mt=0,disabled=false)=>({width:"100%",padding:"12px 0",borderRadius:10,border:bg==="transparent"?"1.5px solid #D8F3DC":"none",background:disabled?"#aaa":bg,color:fg,fontSize:14,fontWeight:700,cursor:disabled?"wait":"pointer",marginTop:mt,opacity:disabled?.7:1});
+
+  return<div style={{background:"#fff",borderRadius:16,padding:28,maxWidth:540,width:"100%",margin:"0 auto",maxHeight:"85vh",overflowY:"auto"}}>
+    {/* Progress */}
+    <div style={{display:"flex",gap:6,marginBottom:22}}>
+      {[1,2].map((s,i)=><div key={i} style={{flex:1,height:4,borderRadius:99,background:step>=s?"#1A3C2E":"#D8F3DC",transition:"background .3s"}}/>)}
+    </div>
+
+    {/* ── Step 1: Project Details ── */}
+    {step===1&&<>
+      <div style={{fontSize:22,marginBottom:8}}>🏗</div>
+      <h3 style={{margin:"0 0 4px",color:"#1A3C2E",fontSize:18}}>Project Setup</h3>
+      <p style={{color:"#607466",fontSize:13,margin:"0 0 18px"}}>Enter your project details. The code is used to log in.</p>
+      {[
+        ["PROJECT NAME","text",projName,v=>{setProjName(v);setProjCode(v.replace(/\s+/g,"").toUpperCase().slice(0,8));},"e.g. Oxford Debate 2026"],
+        ["PROJECT CODE (max 8 chars)","text",projCode,v=>setProjCode(v.toUpperCase().slice(0,8)),"e.g. OXF2026"],
+        ["ADMIN PASSWORD","password",adminPw,v=>setAdminPw(v),"Choose a secure password"],
+      ].map(([lbl,type,val,set,ph])=><div key={lbl} style={{marginBottom:12}}>
+        <label style={{fontSize:11,fontWeight:700,color:"#607466",display:"block",marginBottom:4}}>{lbl}</label>
+        <input style={fi} type={type} placeholder={ph} value={val} onChange={e=>set(e.target.value)}/>
+
+{type==="password" ? <button
+    type="button"
+    onClick={handleToggle}
+    style={{position:"relative",right:10,top:"",transform:"",
+      background:"none",border:"none",cursor:"pointer",fontSize:12,
+      color:"#607466",fontWeight:600,padding:"2px 4px"}}
+  >
+    {type==="password" ? "Show" : "Hide"}
+  </button>  : ""}
+  
+
+
+      </div>)}
+      <div style={{marginBottom:16}}>
+        <label style={{fontSize:11,fontWeight:700,color:"#607466",display:"block",marginBottom:4}}>DESCRIPTION (optional)</label>
+        <textarea style={{...fi,height:64,resize:"vertical"}} placeholder="Brief project description..." value={projDesc} onChange={e=>setProjDesc(e.target.value)}/>
+      </div>
+      {err&&<div style={{color:"#8B1A1A",fontSize:12,padding:"7px 10px",background:"#FFE0E0",borderRadius:7,marginBottom:10}}>{err}</div>}
+      <button style={pBtn("#1A3C2E","#fff")} onClick={()=>{if(!projName||!projCode||!adminPw){setErr("All fields required.");return;}setErr("");setStep(2);}}>Next: Add Tasks →</button>
+      <button style={pBtn("transparent","#607466",8)} onClick={onBack}>Back</button>
+    </>}
+
+    {/* ── Step 2: Tasks ── */}
+    {step===2&&<>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div>
+          <h3 style={{margin:0,color:"#1A3C2E",fontSize:18}}>Add Tasks</h3>
+          <p style={{color:"#607466",fontSize:13,margin:"3px 0 0"}}>{tasks.length} task{tasks.length!==1?"s":""} · saved to Neon on creation</p>
+        </div>
+        <button onClick={addTask} style={{padding:"7px 14px",borderRadius:8,border:"none",background:"#1A3C2E",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>+ Add Task</button>
+      </div>
+
+      <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16,maxHeight:380,overflowY:"auto",paddingRight:4}}>
+        {tasks.map((t,i)=><div key={t.id} style={{border:"1.5px solid #D8F3DC",borderRadius:10,padding:"12px 14px",background:"#EBF7EE"}}>
+          <div style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
+            <span style={{fontSize:10,fontWeight:700,color:"#607466",minWidth:20}}>#{t.id}</span>
+            <input style={{...fi,marginBottom:0,flex:1}} placeholder="Task description (required)" value={t.desc} onChange={e=>updTask(i,"desc",e.target.value)}/>
+            <button onClick={()=>removeTask(i)} style={{padding:"5px 9px",borderRadius:6,border:"1px solid #FFE0E0",background:"#FFE0E0",color:"#8B1A1A",cursor:"pointer",fontSize:12,flexShrink:0}}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+            <div>
+              <label style={{fontSize:10,fontWeight:700,color:"#607466",display:"block",marginBottom:2}}>OWNER</label>
+              <select style={{...fi,marginBottom:0,fontSize:12}} value={t.owner} onChange={e=>updTask(i,"owner",e.target.value)}>
+                {TEAM.map(m=><option key={m.id} value={m.id}>{m.name.split(" ")[0]}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{fontSize:10,fontWeight:700,color:"#607466",display:"block",marginBottom:2}}>PRIORITY</label>
+              <select style={{...fi,marginBottom:0,fontSize:12}} value={t.pri} onChange={e=>updTask(i,"pri",e.target.value)}>
+                {["Low","Medium","High","Critical"].map(p=><option key={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{fontSize:10,fontWeight:700,color:"#607466",display:"block",marginBottom:2}}>START DATE</label>
+              <input style={{...fi,marginBottom:0,fontSize:12}} type="date" value={t.start} onChange={e=>updTask(i,"start",e.target.value)}/>
+            </div>
+            <div>
+              <label style={{fontSize:10,fontWeight:700,color:"#607466",display:"block",marginBottom:2}}>END DATE</label>
+              <input style={{...fi,marginBottom:0,fontSize:12}} type="date" value={t.end} onChange={e=>updTask(i,"end",e.target.value)}/>
+            </div>
+          </div>
+          <div style={{marginTop:6}}>
+            <label style={{fontSize:10,fontWeight:700,color:"#607466",display:"block",marginBottom:2}}>NOTES</label>
+            <input style={{...fi,marginBottom:0,fontSize:12}} placeholder="Optional notes..." value={t.notes} onChange={e=>updTask(i,"notes",e.target.value)}/>
+          </div>
+        </div>)}
+      </div>
+
+      {err&&<div style={{color:"#8B1A1A",fontSize:12,padding:"7px 10px",background:"#FFE0E0",borderRadius:7,marginBottom:10}}>{err}</div>}
+      <button style={pBtn("#1A3C2E","#fff",0,saving)} onClick={handleSave}>
+        {saving?"Saving to Database…":"💾 Save Project to Database"}
+      </button>
+      <button style={pBtn("transparent","#607466",8)} onClick={()=>setStep(1)}>Back</button>
+    </>}
+  </div>;
+}
+
+// ── Login Screen ──────────────────────────────────────────────────────────────
+function LoginScreen({onLogin,onCreateProject}){
+  const[mode,setMode]=useState(null); // null | "login" | "create"
+  const[memberId,setMemberId]=useState("");
+  const[projectCode,setProjectCode]=useState("");
+  const[password,setPassword]=useState("");
+  const[err,setErr]=useState("");
+
+  
+
+
+  function attemptLogin(){
+    if(!projectCode.trim()){setErr("Enter the project code.");return;}
+    if(projectCode.trim().toUpperCase()!==PROJECT_CODE){setErr("Invalid project code.");return;}
+    const authEntry=MEMBER_AUTH[memberId];
+    if(!memberId||!authEntry){setErr("Please select your name.");return;}
+    if(password!==authEntry.password){setErr("Incorrect password.");return;}
+    const member=memberId==="viewer"?{name:"Guest Viewer",role:"Viewer"}:memberObj(memberId);
+    onLogin({memberId, memberName:member.name, memberRole:member.role, role:authEntry.role, roleDef:ROLE_DEFS[authEntry.role], projectCode:projectCode.trim().toUpperCase()});
+  }
+
+  const fi={width:"100%",padding:"10px 13px",border:"1.5px solid #D8F3DC",borderRadius:9,fontSize:14,color:"#1C2B22",background:"#fff",boxSizing:"border-box"};
+
+  // Create project mode — full screen wizard
+  if(mode==="create")return(
+    <div style={{minHeight:"100vh",background:"#1A3C2E",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px 16px"}}>
+      <div style={{textAlign:"center",marginBottom:20}}>
+        <div style={{width:48,height:48,borderRadius:"50%",background:"#74C69D",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 10px"}}><span style={{fontWeight:700,fontSize:16,color:"#1A3C2E"}}>NC</span></div>
+        <div style={{color:"#fff",fontWeight:700,fontSize:18}}>Northumbria Construct</div>
+      </div>
+      <CreateProjectWizard onComplete={onCreateProject} onBack={()=>setMode(null)}/>
+    </div>
+  );
+
+  return<div style={{minHeight:"100vh",background:"#1A3C2E",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px 16px"}}>
+    {/* Logo */}
+    <div style={{textAlign:"center",marginBottom:36}}>
+      <div style={{width:60,height:60,borderRadius:"50%",background:"#74C69D",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}><span style={{fontWeight:700,fontSize:20,color:"#1A3C2E"}}>NC</span></div>
+      <div style={{color:"#fff",fontWeight:700,fontSize:24,letterSpacing:-.4}}>Northumbria Construct</div>
+      <div style={{color:"#74C69D",fontSize:13,marginTop:4}}>Project Management Platform</div>
+    </div>
+
+    {/* Two entry cards */}
+    {mode===null&&<div style={{display:"flex",gap:14,maxWidth:540,width:"100%",flexWrap:"wrap",justifyContent:"center"}}>
+      {[
+        {icon:"🔐",title:"Login to Existing Project",desc:"Enter your project code and credentials to access your dashboard",m:"login"},
+        {icon:"✨",title:"Create New Project",desc:"Upload a project brief and let Claude extract tasks and structure automatically",m:"create"},
+      ].map(card=><button key={card.m} onClick={()=>setMode(card.m)} style={{flex:"1 1 220px",background:card.m==="create"?"rgba(116,198,157,.12)":"rgba(255,255,255,.07)",border:`1.5px solid rgba(116,198,157,${card.m==="create"?.5:.3})`,borderRadius:16,padding:"26px 20px",cursor:"pointer",textAlign:"left",transition:"all .2s"}}>
+        <div style={{fontSize:30,marginBottom:12}}>{card.icon}</div>
+        <div style={{color:"#fff",fontWeight:700,fontSize:15,marginBottom:8,lineHeight:1.3}}>{card.title}</div>
+        <div style={{color:"#74C69D",fontSize:12,lineHeight:1.5}}>{card.desc}</div>
+      </button>)}
+    </div>}
+
+    {/* Login form */}
+    {mode==="login"&&<div style={{background:"#fff",borderRadius:16,padding:28,maxWidth:380,width:"100%"}}>
+      <h3 style={{margin:"0 0 4px",color:"#1A3C2E",fontSize:18}}>Login to Project</h3>
+      <p style={{color:"#607466",fontSize:13,margin:"0 0 20px"}}>Enter your project code and credentials.</p>
+      <label style={{fontSize:11,fontWeight:700,color:"#607466",display:"block",marginBottom:4}}>PROJECT CODE</label>
+      <input style={{...fi,marginBottom:14}} placeholder="e.g. NC2026" value={projectCode} onChange={e=>setProjectCode(e.target.value.toUpperCase())} onKeyDown={e=>e.key==="Enter"&&attemptLogin()}/>
+      <label style={{fontSize:11,fontWeight:700,color:"#607466",display:"block",marginBottom:4}}>YOUR NAME</label>
+      <select style={{...fi,marginBottom:14}} value={memberId} onChange={e=>setMemberId(e.target.value)}>
+        <option value="">— Select your name —</option>
+        {TEAM.map(m=><option key={m.id} value={m.id}>{m.name} · {m.role}</option>)}
+        <option value="viewer">Guest Viewer</option>
+      </select>
+      <label style={{fontSize:11,fontWeight:700,color:"#607466",display:"block",marginBottom:4}}>PASSWORD</label>
+      <input style={{...fi,marginBottom:err?8:16}} type="password" placeholder="Your password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&attemptLogin()}/>
+      {err&&<div style={{color:"#8B1A1A",fontSize:12,marginBottom:12,padding:"7px 10px",background:"#FFE0E0",borderRadius:7}}>{err}</div>}
+      <button onClick={attemptLogin} style={{width:"100%",padding:"12px 0",borderRadius:10,border:"none",background:"#1A3C2E",color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer",marginBottom:8}}>Login →</button>
+      <button onClick={()=>{setMode(null);setErr("");setPassword("");}} style={{width:"100%",padding:"9px 0",borderRadius:10,border:"1.5px solid #D8F3DC",background:"transparent",color:"#607466",fontSize:13,cursor:"pointer"}}>Back</button>
+    </div>}
+  </div>;
+}
+
 // ── Task DB Updater ──────────────────────────────────────────────────────────────────────────────
 const DB_FIELDS=[
   {key:"desc",  label:"Description", type:"text"},
@@ -104,7 +341,8 @@ function FieldRow({fkey,label,type,mode,enabled,fields,onToggle,onUpdate}){
   </div>;
 }
 
-function TaskUpdater({tasks,setTasks,setToast}){
+function TaskUpdater({tasks,setTasks,setToast,canEdit=DB_FIELDS.map(f=>f.key),canCreate=true,projectCode="NC2026"}){
+
   const BLANK={desc:"",owner:TEAM[0].id,start:"2026-04-06",end:"2026-04-30",status:"Not Started",pri:"Medium",pct:0,deps:"",notes:""};
 
   const[mode,setMode]=useState("edit");
@@ -135,7 +373,7 @@ function TaskUpdater({tasks,setTasks,setToast}){
     if(isNew)setTasks(prev=>[...prev,payload]);
     else setTasks(prev=>prev.map(t=>t.id===payload.id?payload:t));
     try{
-      const res=await fetch("/api/update-task",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+      const res=await fetch("/api/update-task",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...payload, project_code:projectCode})});
       if(res.status===404)throw new Error("API not reachable. Local state updated.");
       const data=await res.json();
       if(!res.ok||!data.ok)throw new Error(data.error||"Request failed");
@@ -166,9 +404,9 @@ function TaskUpdater({tasks,setTasks,setToast}){
   const lbl=DB_LBL;
 
   return<div>
-    <SecHead title="Database Manager" sub="Create new tasks or update existing ones directly in the SQL table."/>
+    <SecHead title="Edit Tasks" sub={canCreate?"Create new tasks or update existing ones in the database.":"Update the status, progress and notes for your assigned tasks."}/>
     <div style={{display:"flex",gap:8,marginBottom:14}}>
-      {[["edit","Edit Existing"],["create","+ Create New"]].map(([m,lab])=>
+      {[["edit","Edit Existing"],...(canCreate?[["create","+ Create New"]]:[])].map(([m,lab])=>
         <button key={m} onClick={()=>switchMode(m)} style={{flex:1,padding:"10px 0",borderRadius:10,fontSize:13,fontWeight:700,border:`2px solid ${mode===m?B.ac:B.pl}`,background:mode===m?B.ac:B.wh,color:mode===m?"#fff":B.tg,cursor:"pointer",transition:"all .15s"}}>{lab}</button>
       )}
     </div>
@@ -190,7 +428,7 @@ function TaskUpdater({tasks,setTasks,setToast}){
         <Card style={{marginBottom:14}}>
           <div style={{fontSize:12,color:B.tg,marginBottom:14}}>Toggle the checkbox next to each field to enable it, then click <b style={{color:B.dk}}>Push Update to Database</b>.</div>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {DB_FIELDS.map(f=><FieldRow key={f.key} fkey={f.key} label={f.label} type={f.type} mode={mode} enabled={enabled} fields={fields} onToggle={toggle} onUpdate={upd}/>)}
+            {DB_FIELDS.filter(f=>canEdit.includes(f.key)).map(f=><FieldRow key={f.key} fkey={f.key} label={f.label} type={f.type} mode={mode} enabled={enabled} fields={fields} onToggle={toggle} onUpdate={upd}/>)}
           </div>
         </Card>
         <button onClick={submitEdit} disabled={submitting||Object.values(enabled).every(v=>!v)} style={{width:"100%",background:submitting?"#888":B.dk,color:"#fff",padding:"13px 0",borderRadius:12,fontSize:14,fontWeight:700,border:"none",cursor:submitting?"wait":"pointer",marginBottom:10,transition:"background .2s"}}>
@@ -1153,88 +1391,76 @@ function Team({tasks,isMobile}){
 // ════════════════════════════════════════════════════════════
 export default function App(){
   const isMobile=useIsMobile();
+  const[auth,setAuth]=useState(null); // null = logged out
+  const[projectName,setProjectName]=useState("Oxford Debate \u00b7 28 April 2026");
   const[tab,setTab]=useState("home");
 
-  // const[tasks,setTasks]=useState(()=>loadState("nc_tasks_v2",DEFAULT_TASKS));
-
-const [tasks, setTasks] = useState(DEFAULT_TASKS);
-
-// useEffect(() => {
-//   fetch('/api/tasks')
-//     .then(r => r.json())
-//     .then(data => {
-//       if (Array.isArray(data)) setTasks(data);
-//     })
-//     .catch(e => console.error('Failed to load tasks:', e));
-// }, []);
-
+  const[tasks,setTasks]=useState(DEFAULT_TASKS);
   const[raci,setRaci]=useState(()=>loadState("nc_raci_v2",DEFAULT_RACI));
   const[toast,setToast]=useState("");
-
-  // ── Shared save state ──────────────────────────────────────────────────────
   const[saveStatus,setSaveStatus]=useState("idle");
   const[lastSaved,setLastSaved]=useState(null);
   const[hasRemote,setHasRemote]=useState(false);
 
-  // ── Load from server on mount — with full validation ──────────────────────
+  // ── Load from server (must be before any early return) ───────────────────
   useEffect(()=>{
-    async function loadFromServer(){
+    if(!auth)return; // not logged in yet — skip
+    async function load(){
       setSaveStatus("loading");
       try{
-        const res=await fetch("/api/state");
-        if(!res.ok) throw new Error("unreachable");
+        const res=await fetch(`/api/state?project_code=${auth.projectCode}`);
+        if(!res.ok)throw new Error("unreachable");
         const data=await res.json();
         setHasRemote(true);
-        // Only apply if data is valid — prevents blank screen from corrupt saves
-        if(
-          data.exists===true &&
-          Array.isArray(data.tasks) &&
-          data.tasks.length>0 &&
-          data.tasks[0]!=null &&
-          data.tasks[0].id!==undefined
-        ){
+        if(data.exists===true&&Array.isArray(data.tasks)&&data.tasks.length>0&&data.tasks[0]?.id!==undefined){
           setTasks(data.tasks);
-          if(data.raci && typeof data.raci==="object" && !Array.isArray(data.raci)){
-            setRaci(data.raci);
-          }
-          setLastSaved({by:data.savedBy||"", at:data.savedAt||""});
+          if(data.raci&&typeof data.raci==="object"&&!Array.isArray(data.raci))setRaci(data.raci);
+          setLastSaved({by:data.savedBy||"",at:data.savedAt||""});
           try{localStorage.setItem("nc_tasks_v2",JSON.stringify(data.tasks));}catch{}
           try{localStorage.setItem("nc_raci_v2",JSON.stringify(data.raci||DEFAULT_RACI));}catch{}
         }
         setSaveStatus("idle");
-      }catch(err){
-        // Server not reachable — silently fall through to localStorage data
-        setHasRemote(false);
-        setSaveStatus("idle");
-      }
+      }catch{setHasRemote(false);setSaveStatus("idle");}
     }
-    loadFromServer();
-  },[]);
+    load();
+  },[auth]);
 
-  // ── Keep localStorage in sync as local backup ──────────────────────────────
   useEffect(()=>{try{localStorage.setItem("nc_tasks_v2",JSON.stringify(tasks));}catch{}},[tasks]);
   useEffect(()=>{try{localStorage.setItem("nc_raci_v2",JSON.stringify(raci));}catch{}},[raci]);
   useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(""),3500);return()=>clearTimeout(t);},[toast]);
+  useEffect(()=>{if(!auth)return;if(!auth.roleDef?.tabs.includes(tab))setTab("home");},[auth]);
 
-  // ── Push state to server so all users share the same data ─────────────────
+  // Show login screen until authenticated
+  if(!auth){
+    return<LoginScreen
+      onLogin={a=>{setAuth(a);setTab("home");}}
+      onCreateProject={p=>{
+        setProjectName(p.projectName);
+        setTasks(p.tasks);
+        setAuth({memberId:"creator",memberName:"Project Admin",memberRole:"Admin",role:"admin",roleDef:ROLE_DEFS["admin"]});
+        setTab("home");
+      }}
+    />;
+  }
+
+  const roleDef=auth.roleDef;
+
+  // ── Save to server ────────────────────────────────────────────────────────
   async function saveToServer(){
     setSaveStatus("saving");
     const savedAt=new Date().toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
     try{
       const res=await fetch("/api/state",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({tasks,raci,savedBy:"Committee Member",savedAt}),
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({tasks,raci,savedBy:auth.memberName,savedAt,project_code:auth.projectCode}),
       });
       if(!res.ok){const e=await res.json();throw new Error(e.error||"Save failed");}
-      setLastSaved({by:"Committee Member",at:savedAt});
-      setHasRemote(true);
-      setSaveStatus("saved");
-      setToast("☁ Saved — all users will see this when they refresh");
+      setLastSaved({by:auth.memberName,at:savedAt});
+      setHasRemote(true);setSaveStatus("saved");
+      setToast("\u2601 Saved \u2014 all users will see this when they refresh");
       setTimeout(()=>setSaveStatus("idle"),3000);
     }catch(err){
-      setSaveStatus("error");
-      setToast("⚠ Save failed — changes kept locally");
+      setSaveStatus("error");setToast("\u26a0 Save failed \u2014 changes kept locally");
       setTimeout(()=>setSaveStatus("idle"),4000);
     }
   }
@@ -1243,37 +1469,89 @@ const [tasks, setTasks] = useState(DEFAULT_TASKS);
     const hdr=["ID","Task","Owner","Start","End","Status","Priority","% Done","Notes"];
     const rows=tasks.map(t=>[t.id,`"${t.desc}"`,memberObj(t.owner).name,t.start,t.end,t.status,t.pri,t.pct,`"${t.notes}"`]);
     const csv=[hdr,...rows].map(r=>r.join(",")).join("\n");
-    const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="NC_Oxford_Debate.csv";a.click();
-    setToast("⬇ CSV exported");
+    const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="NC_Tasks.csv";a.click();
+    setToast("\u2b07 CSV exported");
   }
 
-  // ── Save button label & colours ────────────────────────────────────────────
-  const saveLabel=
-    saveStatus==="saving"  ? "Saving…"
-  : saveStatus==="saved"   ? "✓ Saved"
-  : saveStatus==="error"   ? "⚠ Failed"
-  : saveStatus==="loading" ? "Loading…"
-  :                          "☁ Save";
-  const saveBg=
-    saveStatus==="saved"  ? "#1A5C2A"
-  : saveStatus==="error"  ? "#8B1A1A"
-  :                         "rgba(255,255,255,.12)";
-  const saveFg=
-    saveStatus==="saved"  ? "#74C69D"
-  : saveStatus==="error"  ? "#FFE0E0"
-  : saveStatus==="loading"? "rgba(255,255,255,.4)"
-  :                         "#fff";
+  function exportExcel(){
+    // ── Sheet 1: Tasks ──────────────────────────────────────────────────────
+    const taskSheet=XLSX.utils.json_to_sheet(tasks.map(t=>({
+      "ID":           t.id,
+      "Task":         t.desc,
+      "Owner":        memberObj(t.owner).name,
+      "Owner Role":   memberObj(t.owner).role,
+      "Start Date":   t.start,
+      "End Date":     t.end,
+      "Status":       t.status,
+      "Priority":     t.pri,
+      "% Done":       t.pct,
+      "Dependencies": t.deps,
+      "Notes":        t.notes,
+    })));
+    // Column widths
+    taskSheet["!cols"]=[{wch:5},{wch:45},{wch:22},{wch:28},{wch:12},{wch:12},{wch:14},{wch:10},{wch:8},{wch:14},{wch:40}];
 
-  const TABS=[
-    {id:"home",     label:"Home",   icon:"🏠"},
-    {id:"dashboard",label:"Dash",   icon:"📊"},
-    {id:"tasks",    label:"Tasks",  icon:"✅"},
-    {id:"gantt",    label:"Gantt",  icon:"📅"},
-    {id:"raci",     label:"RACI",   icon:"🔗"},
-    {id:"team",     label:"Team",   icon:"👥"},
-    {id:"report",   label:"Report", icon:"📋"},
-    {id:"db",       label:"DB",     icon:"🗄"},
+    // ── Sheet 2: RACI Matrix ────────────────────────────────────────────────
+    const raciRows=tasks.map(t=>{
+      const row={"#":t.id,"Task":t.desc.slice(0,60),"Status":t.status};
+      TEAM.forEach(m=>{row[m.name.split(" ")[0]]=raci[t.id]?.[m.id]||"";});
+      return row;
+    });
+    const raciSheet=XLSX.utils.json_to_sheet(raciRows);
+    raciSheet["!cols"]=[{wch:5},{wch:50},{wch:14},...TEAM.map(()=>({wch:12}))];
+
+    // ── Sheet 3: Team ───────────────────────────────────────────────────────
+    const teamSheet=XLSX.utils.json_to_sheet(TEAM.map(m=>({
+      "Name":            m.name,
+      "Role":            m.role,
+      "Area":            m.area,
+      "Responsibilities":m.resp,
+    })));
+    teamSheet["!cols"]=[{wch:24},{wch:32},{wch:12},{wch:80}];
+
+    // ── Sheet 4: Summary ────────────────────────────────────────────────────
+    const done=tasks.filter(t=>t.status==="Complete").length;
+    const inProg=tasks.filter(t=>t.status==="In Progress").length;
+    const summarySheet=XLSX.utils.json_to_sheet([
+      {"Metric":"Project","Value":projectName},
+      {"Metric":"Exported At","Value":new Date().toLocaleString("en-GB")},
+      {"Metric":"Exported By","Value":auth?.memberName||""},
+      {"Metric":"Total Tasks","Value":tasks.length},
+      {"Metric":"Complete","Value":done},
+      {"Metric":"In Progress","Value":inProg},
+      {"Metric":"Not Started","Value":tasks.length-done-inProg},
+      {"Metric":"Overall Progress","Value":`${tasks.length?Math.round(tasks.reduce((a,t)=>a+t.pct,0)/tasks.length):0}%`},
+    ]);
+    summarySheet["!cols"]=[{wch:20},{wch:40}];
+
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,"Tasks",taskSheet);
+    XLSX.utils.book_append_sheet(wb,"RACI Matrix",raciSheet);
+    XLSX.utils.book_append_sheet(wb,"Team",teamSheet);
+    XLSX.utils.book_append_sheet(wb,"Summary",summarySheet);
+
+    const filename=`${projectName.replace(/[^a-z0-9]/gi,"_")}_Export.xlsx`;
+    XLSX.writeFile(wb,filename);
+    setToast("\u2b07 Excel exported");
+  }
+
+  // ── Save button styles ────────────────────────────────────────────────────
+  const saveLabel=saveStatus==="saving"?"Saving\u2026":saveStatus==="saved"?"\u2713 Saved":saveStatus==="error"?"\u26a0 Failed":saveStatus==="loading"?"Loading\u2026":"\u2601 Save";
+  const saveBg=saveStatus==="saved"?"#1A5C2A":saveStatus==="error"?"#8B1A1A":"rgba(255,255,255,.12)";
+  const saveFg=saveStatus==="saved"?"#74C69D":saveStatus==="error"?"#FFE0E0":saveStatus==="loading"?"rgba(255,255,255,.4)":"#fff";
+
+  // ── Role-filtered tabs ────────────────────────────────────────────────────
+  const ALL_TABS=[
+    {id:"home",     label:"Home",   icon:"\ud83c\udfe0"},
+    {id:"dashboard",label:"Dash",   icon:"\ud83d\udcca"},
+    {id:"tasks",    label:"Tasks",  icon:"\u2705"},
+    {id:"gantt",    label:"Gantt",  icon:"\ud83d\udcc5"},
+    {id:"raci",     label:"RACI",   icon:"\ud83d\udd17"},
+    {id:"team",     label:"Team",   icon:"\ud83d\udc65"},
+    {id:"report",   label:"Report", icon:"\ud83d\udccb"},
+    {id:"edit",     label:"Edit",   icon:"\u270f\ufe0f"},
   ];
+  const TABS=ALL_TABS.filter(t=>roleDef.tabs.includes(t.id));
 
   return<div style={{fontFamily:"'Segoe UI',system-ui,sans-serif",background:B.st,minHeight:"100vh",color:B.tx,paddingBottom:isMobile?80:0}}>
 
@@ -1285,28 +1563,28 @@ const [tasks, setTasks] = useState(DEFAULT_TASKS);
       <div style={{flex:1,minWidth:0}}>
         <div style={{color:"#fff",fontWeight:700,fontSize:14,lineHeight:1.1}}>Northumbria Construct</div>
         {!isMobile&&<div style={{color:B.lt,fontSize:10}}>
-          Oxford Debate · 28 April 2026
-          {lastSaved&&<span style={{opacity:.6}}> · Saved {lastSaved.at}</span>}
-          {!hasRemote&&saveStatus==="idle"&&<span style={{color:"#F0C040",marginLeft:6}}>· local only</span>}
+          {projectName}
+          {lastSaved&&<span style={{opacity:.6}}> \u00b7 Saved {lastSaved.at} by {lastSaved.by}</span>}
+          {!hasRemote&&saveStatus==="idle"&&<span style={{color:"#F0C040",marginLeft:6}}>\u00b7 local only</span>}
         </div>}
       </div>
       {!isMobile&&<div style={{display:"flex",gap:2}}>
         {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"5px 11px",borderRadius:20,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,transition:"all .15s",background:tab===t.id?B.lt:"transparent",color:tab===t.id?B.dk:B.pl}}>{t.icon} {t.label}</button>)}
       </div>}
-      <div style={{display:"flex",gap:6,flexShrink:0}}>
-        <button
-          onClick={saveToServer}
-          disabled={saveStatus==="saving"||saveStatus==="loading"}
-          style={{padding:"5px 14px",borderRadius:20,fontSize:11,fontWeight:700,border:"none",cursor:saveStatus==="saving"?"wait":"pointer",background:saveBg,color:saveFg,transition:"all .2s"}}
-        >{saveLabel}</button>
-        <button onClick={exportCSV} style={{padding:"5px 11px",borderRadius:20,fontSize:11,fontWeight:600,background:"rgba(116,198,157,.2)",color:B.lt,border:"1px solid rgba(116,198,157,.3)",cursor:"pointer"}}>⬇ CSV</button>
+      <div style={{display:"flex",gap:6,flexShrink:0,alignItems:"center"}}>
+        {/* Role badge */}
+        <div style={{padding:"3px 10px",borderRadius:20,background:roleDef.badge,border:"1px solid rgba(255,255,255,.2)",display:"flex",alignItems:"center",gap:5}}>
+          <div style={{width:18,height:18,borderRadius:"50%",background:"rgba(255,255,255,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#fff"}}>{auth.memberName.split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
+          {!isMobile&&<span style={{fontSize:10,fontWeight:600,color:"#fff"}}>{auth.memberName.split(" ")[0]} \u00b7 {roleDef.label}</span>}
+        </div>
+        <button onClick={saveToServer} disabled={saveStatus==="saving"||saveStatus==="loading"} style={{padding:"5px 14px",borderRadius:20,fontSize:11,fontWeight:700,border:"none",cursor:saveStatus==="saving"?"wait":"pointer",background:saveBg,color:saveFg,transition:"all .2s"}}>{saveLabel}</button>
+        <button onClick={exportCSV} style={{padding:"5px 11px",borderRadius:20,fontSize:11,fontWeight:600,background:"rgba(116,198,157,.2)",color:B.lt,border:"1px solid rgba(116,198,157,.3)",cursor:"pointer"}}>\u2b07 CSV</button>
+        <button onClick={()=>setAuth(null)} title="Logout" style={{padding:"5px 10px",borderRadius:20,fontSize:11,fontWeight:600,background:"rgba(255,255,255,.08)",color:"rgba(255,255,255,.6)",border:"none",cursor:"pointer"}}>\ud83d\udd13</button>
       </div>
     </div>
 
-    {/* Warning banner — only shows when server not connected */}
     {!hasRemote&&saveStatus==="idle"&&<div style={{background:"#FFF3CD",borderBottom:"1px solid #F0C040",padding:"8px 20px",fontSize:12,color:"#7A5000",display:"flex",alignItems:"center",gap:10}}>
-      <span>⚠</span>
-      <span>Shared save not connected — changes are saving locally only.</span>
+      <span>\u26a0</span><span>Shared save not connected \u2014 changes are saving locally only.</span>
     </div>}
 
     <div style={{maxWidth:1280,margin:"0 auto",padding:isMobile?"16px 14px":"22px 18px"}}>
@@ -1317,22 +1595,16 @@ const [tasks, setTasks] = useState(DEFAULT_TASKS);
       {tab==="raci"     &&<RaciMatrix tasks={tasks} setTasks={setTasks} raci={raci} setRaci={setRaci} setToast={setToast} isMobile={isMobile}/>}
       {tab==="team"     &&<Team tasks={tasks} isMobile={isMobile}/>}
       {tab==="report"   &&<FinalReport tasks={tasks} raci={raci} isMobile={isMobile}/>}
-      {tab==="db"       &&<TaskUpdater tasks={tasks} setTasks={setTasks} setToast={setToast}/>}
+      {tab==="edit"     &&<TaskUpdater tasks={tasks} setTasks={setTasks} setToast={setToast} canEdit={roleDef.canEdit} canCreate={roleDef.canCreate} projectCode={auth.projectCode}/>}
     </div>
 
-    {/* ── MOBILE BOTTOM NAV ── */}
     {isMobile&&<div style={{position:"fixed",bottom:0,left:0,right:0,background:B.wh,borderTop:`1px solid ${B.pl}`,display:"flex",zIndex:200,paddingBottom:"env(safe-area-inset-bottom)"}}>
       {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,border:"none",background:"transparent",padding:"8px 2px 6px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:0}}>
         <span style={{fontSize:16}}>{t.icon}</span>
         <span style={{fontSize:8,fontWeight:700,color:tab===t.id?B.ac:B.tg,lineHeight:1}}>{t.label}</span>
         {tab===t.id&&<div style={{width:16,height:3,borderRadius:99,background:B.ac}}/>}
       </button>)}
-      {/* Mobile save button — floats above tab bar */}
-      <button
-        onClick={saveToServer}
-        disabled={saveStatus==="saving"||saveStatus==="loading"}
-        style={{position:"absolute",top:-40,right:14,padding:"7px 16px",borderRadius:99,fontSize:12,fontWeight:700,border:"none",cursor:"pointer",background:saveStatus==="saved"?"#1A5C2A":B.dk,color:saveStatus==="saved"?"#74C69D":"#fff",boxShadow:"0 2px 8px rgba(0,0,0,.3)"}}
-      >{saveLabel}</button>
+      <button onClick={saveToServer} disabled={saveStatus==="saving"||saveStatus==="loading"} style={{position:"absolute",top:-40,right:14,padding:"7px 16px",borderRadius:99,fontSize:12,fontWeight:700,border:"none",cursor:"pointer",background:saveStatus==="saved"?"#1A5C2A":B.dk,color:saveStatus==="saved"?"#74C69D":"#fff",boxShadow:"0 2px 8px rgba(0,0,0,.3)"}}>{saveLabel}</button>
     </div>}
 
     <Toast msg={toast}/>
